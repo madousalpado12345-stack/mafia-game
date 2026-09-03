@@ -48,12 +48,7 @@ export default function MenuScreen({
         )}
         <PrimaryButton onClick={onNewGame}>🎮 لعبة جديدة</PrimaryButton>
         <GhostButton onClick={onFriends}>👥 اللعب مع الأصدقاء</GhostButton>
-        <GhostButton onClick={onAi} disabled className="relative">
-          🤖 اللعب ضد الذكاء الاصطناعي
-          <span className="absolute -top-2 left-3 rounded-full bg-primary px-2 py-0.5 text-[10px] font-black text-primary-foreground">
-            قريبًا
-          </span>
-        </GhostButton>
+        <GhostButton onClick={onAi}>🤖 اللعب ضد الذكاء الاصطناعي</GhostButton>
         <div className="my-1 flex items-center gap-3">
           <span className="h-px flex-1 bg-white/10" />
           <SectionTitle>المزيد</SectionTitle>
@@ -64,7 +59,7 @@ export default function MenuScreen({
       </div>
 
       <p className="mt-8 text-center text-[11px] text-muted-foreground/70">
-        الإصدار 1.0 — تناوب على هاتف واحد · 6–16 لاعبًا
+        الإصدار 2.0 — مع الأصدقاء أو ضد الذكاء الاصطناعي · 6–16 لاعبًا
       </p>
     </ScreenShell>
   );

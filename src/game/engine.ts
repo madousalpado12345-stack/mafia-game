@@ -1,8 +1,11 @@
+import { createAiStates } from "./ai";
 import { ROLES, buildRoleDeck } from "./roles";
 import type {
+  Difficulty,
   GameSettings,
   GameState,
   NightStep,
+  PlayMode,
   Player,
   RoleId,
   VoteOutcome,
@@ -16,18 +19,28 @@ export function uid(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}-${idCounter}`;
 }
 
-export function createGame(names: string[], rules: GameSettings): GameState {
+export function createGame(
+  names: string[],
+  rules: GameSettings,
+  playMode: PlayMode = "friends",
+  difficulty: Difficulty = "medium",
+): GameState {
   const deck = buildRoleDeck(names.length, rules);
   const players: Player[] = names.map((raw, i) => ({
     id: `p${i}`,
     name: raw.trim() || `اللاعب ${i + 1}`,
     role: deck[i],
     status: "alive",
-    isAi: false,
+    isAi: playMode === "ai" && i > 0,
   }));
-  return {
+  const game: GameState = {
     players,
     settings: rules,
+    playMode,
+    difficulty,
+    aiStates: {},
+    discussionScript: [],
+    aiVotesRecorded: false,
     night: 1,
     revealCursor: 0,
     nightActions: { mafiaTargetId: null, doctorSaveId: null, detectiveCheckId: null },
@@ -42,6 +55,8 @@ export function createGame(names: string[], rules: GameSettings): GameState {
     log: [],
     createdAt: Date.now(),
   };
+  if (playMode === "ai") createAiStates(game);
+  return game;
 }
 
 export function alivePlayers(players: Player[]): Player[] {

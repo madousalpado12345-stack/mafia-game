@@ -1,3 +1,4 @@
+import AiDiscussionScreen from "@/components/game/AiDiscussionScreen";
 import DayScreen from "@/components/game/DayScreen";
 import DiscussionScreen from "@/components/game/DiscussionScreen";
 import HowToScreen from "@/components/game/HowToScreen";
@@ -11,6 +12,16 @@ import VoteResultsScreen from "@/components/game/VoteResultsScreen";
 import VoteScreen from "@/components/game/VoteScreen";
 import WinScreen from "@/components/game/WinScreen";
 import { PrimaryButton, ScreenShell } from "@/components/game/ui";
+import {
+  afterDayResolved,
+  afterNightResolved,
+  aiVotesFor,
+  applyAiNightActions,
+  buildDiscussionScript,
+  humanPlayer,
+  isAiMode,
+  recordVotes,
+} from "@/game/ai";
 import {
   alivePlayers,
   applyVoteElimination,
@@ -29,8 +40,10 @@ import type {
   AppState,
   GameState,
   NightStep,
+  PlayMode,
   ScreenName,
   Settings,
+  Winner,
 } from "@/game/types";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
@@ -42,7 +55,7 @@ function nightScreenFor(step: NightStep): ScreenName {
   return "nightDetective";
 }
 
-function RoleIntro({ onBegin }: { onBegin: () => void }) {
+function RoleIntro({ aiMode, onBegin }: { aiMode: boolean; onBegin: () => void }) {
   return (
     <ScreenShell>
       <div className="flex-1" />
@@ -50,13 +63,15 @@ function RoleIntro({ onBegin }: { onBegin: () => void }) {
         <div className="animate-float text-7xl">🎴</div>
         <h1 className="mt-4 text-3xl font-black text-glow-gold">توزيع الأدوار</h1>
         <p className="mx-auto mt-3 max-w-[300px] text-sm leading-7 text-muted-foreground">
-          سيُظهر الهاتف لكل لاعب دوره سرًا واحدًا تلو الآخر. مرّروا الهاتف بينكم ولا
-          تُطلعوا أحدًا على دوركم.
+          {aiMode
+            ? "سيُظهر الهاتف دورك السري أنت فقط — الشخصيات الأخرى تعرف أدوارها سرًا ولن تراها أبدًا."
+            : "سيُظهر الهاتف لكل لاعب دوره سرًا واحدًا تلو الآخر. مرّروا الهاتف بينكم ولا تُطلعوا أحدًا على دوركم."}
         </p>
       </div>
       <div className="rounded-2xl border border-white/10 bg-card/70 p-4 text-center text-xs leading-6 text-muted-foreground">
-        💡 كل لاعب يضغط «إظهار دوري» ويراه وحده، ثم يضغط «إخفاء الدور» ويمرر الهاتف
-        إلى اللاعب التالي.
+        {aiMode
+          ? "💡 دورك يبقى سرًا طوال اللعبة. استخدم معلوماتك بذكاء ولا تكشف نفسك إلا في اللحظة المناسبة."
+          : "💡 كل لاعب يضغط «إظهار دوري» ويراه وحده، ثم يضغط «إخفاء الدور» ويمرر الهاتف إلى اللاعب التالي."}
       </div>
       <div className="flex-1" />
       <PrimaryButton onClick={onBegin}>ابدأ التوزيع 🎴</PrimaryButton>
@@ -92,9 +107,17 @@ export default function Landing() {
   const goMenu = () =>
     setState((s) => ({ ...s, screen: "menu", pendingNames: null }));
 
-  const goSetup = () => {
+  const goSetup = (mode?: PlayMode) => {
     playSound("click");
-    setState((s) => ({ ...s, screen: "setup", pendingNames: null }));
+    setState((s) => ({
+      ...s,
+      screen: "setup",
+      pendingNames: null,
+      settings: {
+        ...s.settings,
+        prefs: { ...s.settings.prefs, playMode: mode ?? s.settings.prefs.playMode ?? "friends" },
+      },
+    }));
   };
 
   const goNames = () => setState((s) => ({ ...s, screen: "names" }));
@@ -120,18 +143,19 @@ export default function Landing() {
     toast.success("تم حفظ اللعبة ✓");
   };
 
-  const aiSoon = () => {
-    playSound("click");
-    toast.info("وضع الذكاء الاصطناعي قريبًا في النسخة القادمة 🤖");
-  };
-
   const updateSettings = (next: Settings) =>
     setState((s) => ({ ...s, settings: next }));
 
   // ---- game lifecycle -----------------------------------------------------
 
   const startGame = (names: string[]) => {
-    const game = createGame(names, state.settings.rules);
+    const prefs = state.settings.prefs;
+    const game = createGame(
+      names,
+      state.settings.rules,
+      prefs.playMode ?? "friends",
+      prefs.difficulty ?? "medium",
+    );
     const screen: ScreenName = state.settings.prefs.showInstructions
       ? "roleIntro"
       : "roleReveal";
@@ -148,25 +172,36 @@ export default function Landing() {
     if (!state.game) return;
     const game = structuredClone(state.game);
     game.revealCursor += 1;
-    const next: ScreenName =
-      game.revealCursor >= game.players.length ? "nightIntro" : "roleReveal";
+    let next: ScreenName;
+    if (game.playMode === "ai") {
+      next = "nightIntro";
+    } else {
+      next = game.revealCursor >= game.players.length ? "nightIntro" : "roleReveal";
+    }
     playSound(next === "nightIntro" ? "night" : "click");
     setState((s) => ({ ...s, game, screen: next }));
   };
 
   const startNight = () => {
+    if (!state.game) return;
     playSound("click");
-    setState((s) => {
-      if (!s.game) return s;
-      const step = currentNightStep(s.game);
-      return { ...s, screen: step === "done" ? "nightIntro" : nightScreenFor(step) };
-    });
+    const game = structuredClone(state.game);
+    if (isAiMode(game)) applyAiNightActions(game);
+    const step = currentNightStep(game);
+    if (step === "done") {
+      const res = finishNight(game);
+      setState((s) => ({ ...s, game, screen: res.screen }));
+      playSound(res.sound);
+      return;
+    }
+    setState((s) => ({ ...s, game, screen: nightScreenFor(step) }));
   };
 
   const finishNight = (game: GameState): { screen: ScreenName; sound: "win" | "day" | "click" } => {
     const step = currentNightStep(game);
     if (step === "done") {
       const winner = resolveNight(game);
+      if (isAiMode(game)) afterNightResolved(game);
       if (winner) {
         game.winner = winner;
         return { screen: "win", sound: "win" };
@@ -206,27 +241,81 @@ export default function Landing() {
   };
 
   const dayContinue = () => {
+    if (!state.game) return;
     playSound("click");
-    setState((s) => ({ ...s, screen: "discussion" }));
+    if (!isAiMode(state.game)) {
+      setState((s) => ({ ...s, screen: "discussion" }));
+      return;
+    }
+    const game = structuredClone(state.game);
+    const aiAlive = game.players.filter((p) => p.isAi && p.status === "alive").length;
+    game.discussionScript = aiAlive > 0 ? buildDiscussionScript(game) : [];
+    setState((s) => ({ ...s, game }));
+    if (aiAlive === 0) beginVoting(game);
+  };
+
+  /** Resets the vote round; in AI mode it fills the AI votes first. */
+  const beginVoting = (game: GameState) => {
+    const g = structuredClone(game);
+    g.votes = [];
+    g.voteCursor = 0;
+    g.tiedCandidates = null;
+    g.lastVoteOutcome = null;
+    g.dayEliminatedId = null;
+    g.aiVotesRecorded = false;
+    if (isAiMode(g)) {
+      g.votes = aiVotesFor(g, null);
+      const human = humanPlayer(g.players);
+      if (!human || human.status !== "alive") {
+        const res = finalizeVotes(g);
+        setState((s) => ({ ...s, game: g, screen: res.winner ? "win" : "voteResults" }));
+        playSound(res.winner ? "win" : res.kind === "eliminate" ? "eliminate" : "click");
+        return;
+      }
+      setState((s) => ({ ...s, game: g, screen: "votingHandoff" }));
+      playSound("click");
+      return;
+    }
+    setState((s) => ({ ...s, game: g, screen: "votingHandoff" }));
+    playSound("click");
   };
 
   const startVoting = () => {
     playSound("click");
-    setState((s) => {
-      if (!s.game) return s;
-      const game = structuredClone(s.game);
-      game.votes = [];
-      game.voteCursor = 0;
-      game.tiedCandidates = null;
-      game.lastVoteOutcome = null;
-      game.dayEliminatedId = null;
-      return { ...s, game, screen: "votingHandoff" };
-    });
+    if (!state.game) return;
+    beginVoting(state.game);
+  };
+
+  /** Applies the vote outcome, records it into AI memory, returns winner + kind. */
+  const finalizeVotes = (game: GameState): { winner: Winner | null; kind: string } => {
+    const outcome = computeVoteOutcome(game.votes, game.settings.allowAbstain);
+    const winner = applyVoteElimination(game, outcome);
+    if (isAiMode(game)) {
+      recordVotes(game);
+      afterDayResolved(game);
+    }
+    if (winner) game.winner = winner;
+    return { winner, kind: outcome.kind };
   };
 
   const castVote = (targetId: string | null) => {
     if (!state.game) return;
     const game = structuredClone(state.game);
+
+    if (isAiMode(game)) {
+      const human = humanPlayer(game.players);
+      if (!human) return;
+      if (targetId === human.id) {
+        toast.error("لا يمكنك التصويت على نفسك");
+        return;
+      }
+      game.votes.push({ voterId: human.id, targetId });
+      const res = finalizeVotes(game);
+      setState((s) => ({ ...s, game, screen: res.winner ? "win" : "voteResults" }));
+      playSound(res.winner ? "win" : res.kind === "eliminate" ? "eliminate" : "click");
+      return;
+    }
+
     const voters = alivePlayers(game.players);
     const voter = voters[game.voteCursor];
     if (!voter) return;
@@ -255,6 +344,7 @@ export default function Landing() {
 
   const revote = () => {
     if (!state.game) return;
+    playSound("click");
     const game = structuredClone(state.game);
     const outcome = game.lastVoteOutcome;
     if (!outcome || outcome.kind !== "tie") return;
@@ -263,14 +353,30 @@ export default function Landing() {
     game.voteCursor = 0;
     game.dayEliminatedId = null;
     game.lastVoteOutcome = null;
+    game.aiVotesRecorded = false;
+    if (isAiMode(game)) {
+      game.votes = aiVotesFor(game, outcome.tiedIds);
+      const human = humanPlayer(game.players);
+      if (!human || human.status !== "alive") {
+        const res = finalizeVotes(game);
+        setState((s) => ({ ...s, game, screen: res.winner ? "win" : "voteResults" }));
+        playSound(res.winner ? "win" : res.kind === "eliminate" ? "eliminate" : "click");
+        return;
+      }
+      setState((s) => ({ ...s, game, screen: "votingHandoff" }));
+      return;
+    }
     setState((s) => ({ ...s, game, screen: "votingHandoff" }));
-    playSound("click");
   };
 
   const noEliminate = () => {
     if (!state.game) return;
     const game = structuredClone(state.game);
     game.dayEliminatedId = null;
+    if (isAiMode(game)) {
+      recordVotes(game);
+      afterDayResolved(game);
+    }
     const winner = checkWin(game.players);
     if (winner) {
       game.winner = winner;
@@ -286,6 +392,10 @@ export default function Landing() {
   const voteContinue = () => {
     if (!state.game) return;
     const game = structuredClone(state.game);
+    if (isAiMode(game)) {
+      recordVotes(game);
+      afterDayResolved(game);
+    }
     startNextNight(game);
     setState((s) => ({ ...s, game, screen: "nightIntro" }));
     playSound("night");
@@ -294,7 +404,12 @@ export default function Landing() {
   const replaySamePlayers = () => {
     if (!state.game) return;
     const names = state.game.players.map((p) => p.name);
-    const game = createGame(names, state.game.settings);
+    const game = createGame(
+      names,
+      state.game.settings,
+      state.game.playMode ?? "friends",
+      state.game.difficulty ?? "medium",
+    );
     setState((s) => ({
       ...s,
       game,
@@ -323,9 +438,9 @@ export default function Landing() {
           <MenuScreen
             canContinue={!!game && !game.winner}
             onContinue={goContinue}
-            onNewGame={goSetup}
-            onFriends={goSetup}
-            onAi={aiSoon}
+            onNewGame={() => goSetup()}
+            onFriends={() => goSetup("friends")}
+            onAi={() => goSetup("ai")}
             onHowTo={goHowTo}
             onSettings={goSettings}
           />
@@ -344,16 +459,20 @@ export default function Landing() {
           <NamesScreen
             count={state.settings.prefs.playerCount}
             initialNames={state.pendingNames}
-            onBack={goSetup}
+            aiMode={state.settings.prefs.playMode === "ai"}
+            onBack={() => goSetup()}
             onStart={startGame}
           />
         );
       case "roleIntro":
-        return <RoleIntro onBegin={beginReveal} />;
+        return (
+          <RoleIntro aiMode={!!game && game.playMode === "ai"} onBegin={beginReveal} />
+        );
       case "roleReveal":
         return game ? (
           <RoleRevealScreen
             game={game}
+            aiMode={isAiMode(game)}
             onShow={() => playSound("reveal")}
             onHide={hideRole}
           />
@@ -366,6 +485,7 @@ export default function Landing() {
         return (
           <NightScreen
             game={game}
+            aiMode={isAiMode(game)}
             step={
               state.screen === "nightIntro"
                 ? "intro"
@@ -388,21 +508,44 @@ export default function Landing() {
         ) : null;
       case "discussion":
         return game ? (
-          <DiscussionScreen game={game} onDone={startVoting} onExit={exitToMenu} onSave={saveNow} />
+          game.playMode === "ai" ? (
+            <AiDiscussionScreen
+              game={game}
+              onDone={startVoting}
+              onExit={exitToMenu}
+              onSave={saveNow}
+            />
+          ) : (
+            <DiscussionScreen
+              game={game}
+              onDone={startVoting}
+              onExit={exitToMenu}
+              onSave={saveNow}
+            />
+          )
         ) : null;
-      case "votingHandoff":
-        return game && voter ? (
+      case "votingHandoff": {
+        if (!game) return null;
+        const ai = isAiMode(game);
+        const human = humanPlayer(game.players);
+        const activeVoter = ai ? human : voter;
+        const idx = ai
+          ? (voters.findIndex((v) => v.id === activeVoter?.id) ?? 0)
+          : game.voteCursor;
+        return activeVoter ? (
           <VoteScreen
-            key={voter.id}
+            key={activeVoter.id}
             game={game}
-            voter={voter}
-            index={game.voteCursor}
+            voter={activeVoter}
+            index={idx}
             total={voters.length}
+            aiMode={ai}
             onVote={castVote}
             onExit={exitToMenu}
             onSave={saveNow}
           />
         ) : null;
+      }
       case "voteResults":
         return game ? (
           <VoteResultsScreen

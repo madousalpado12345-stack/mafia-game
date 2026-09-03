@@ -1,7 +1,9 @@
 import { cn } from "@/lib/utils";
+import { DIFFICULTY_META } from "@/game/ai";
 import { ROLES } from "@/game/roles";
-import type { RoleId, Settings } from "@/game/types";
+import type { Difficulty, RoleId, Settings } from "@/game/types";
 import type { ReactNode } from "react";
+import { toast } from "sonner";
 import { GhostButton, PrimaryButton, SectionTitle, ScreenShell } from "./ui";
 
 const COUNTS = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
@@ -41,22 +43,23 @@ function ModeCard({
   title,
   desc,
   active,
-  disabled,
+  onClick,
 }: {
   emoji: string;
   title: string;
   desc: string;
   active: boolean;
-  disabled?: boolean;
+  onClick: () => void;
 }) {
   return (
-    <div
+    <button
+      type="button"
+      onClick={onClick}
       className={cn(
-        "relative flex items-center gap-3 rounded-xl border p-3.5",
+        "relative flex items-center gap-3 rounded-xl border p-3.5 text-start transition-all active:scale-[0.99]",
         active
-          ? "border-accent/60 bg-accent/10"
-          : "border-white/10 bg-card/70",
-        disabled && "opacity-45",
+          ? "border-accent/60 bg-accent/10 shadow-[0_0_20px_-6px_rgba(255,196,87,0.3)]"
+          : "border-white/10 bg-card/70 hover:border-white/25",
       )}
     >
       <span className="text-2xl">{emoji}</span>
@@ -66,16 +69,11 @@ function ModeCard({
       </div>
       <span
         className={cn(
-          "size-4 rounded-full border-2",
+          "size-4 shrink-0 rounded-full border-2 transition-colors",
           active ? "border-accent bg-accent" : "border-white/25",
         )}
       />
-      {disabled && (
-        <span className="absolute -top-2 left-3 rounded-full bg-primary px-2 py-0.5 text-[10px] font-black text-primary-foreground">
-          قريبًا
-        </span>
-      )}
-    </div>
+    </button>
   );
 }
 
@@ -217,27 +215,51 @@ export default function SetupScreen({
         <SectionTitle>طريقة اللعب</SectionTitle>
         <div className="flex flex-col gap-2">
           <ModeCard
-            emoji="📱"
-            title="تناوب على هاتف واحد"
-            desc="اللاعبون يجلسون معًا ويمررون الهاتف سرًا بينهم."
-            active
+            emoji="👥"
+            title="اللعب مع الأصدقاء"
+            desc="تناوبوا على هاتف واحد ومرّروه سرًا بينكم."
+            active={settings.prefs.playMode === "friends"}
+            onClick={() => onChange({ ...settings, prefs: { ...settings.prefs, playMode: "friends" } })}
+          />
+          <ModeCard
+            emoji="🤖"
+            title="اللعب ضد الذكاء الاصطناعي"
+            desc="أنت اللاعب الوحيد والباقون شخصيات ذكاء اصطناعي بشخصيات مختلفة."
+            active={settings.prefs.playMode === "ai"}
+            onClick={() => onChange({ ...settings, prefs: { ...settings.prefs, playMode: "ai" } })}
           />
           <ModeCard
             emoji="🤝"
             title="أصدقاء + ذكاء اصطناعي"
             desc="اعب مع أصدقائك ضد شخصيات ذكية."
             active={false}
-            disabled
-          />
-          <ModeCard
-            emoji="🤖"
-            title="جميع اللاعبين ذكاء اصطناعي"
-            desc="شاهد المعركة تدور بين الذكاء الاصطناعي."
-            active={false}
-            disabled
+            onClick={() => toast.info("وضع الأصدقاء + الذكاء الاصطناعي قريبًا في النسخة القادمة 🤝")}
           />
         </div>
       </div>
+
+      {settings.prefs.playMode === "ai" && (
+        <div className="flex flex-col gap-2.5">
+          <SectionTitle>مستوى الذكاء</SectionTitle>
+          <div className="grid grid-cols-3 gap-2">
+            {(Object.keys(DIFFICULTY_META) as Difficulty[]).map((d) => {
+              const meta = DIFFICULTY_META[d];
+              return (
+                <Chip
+                  key={d}
+                  selected={settings.prefs.difficulty === d}
+                  onClick={() => onChange({ ...settings, prefs: { ...settings.prefs, difficulty: d } })}
+                >
+                  {meta.emoji} {meta.label}
+                </Chip>
+              );
+            })}
+          </div>
+          <p className="text-center text-xs text-muted-foreground">
+            {DIFFICULTY_META[settings.prefs.difficulty].hint}
+          </p>
+        </div>
+      )}
 
       <div className="flex flex-col gap-2.5">
         <SectionTitle>الأدوار في اللعبة</SectionTitle>
@@ -308,7 +330,11 @@ export default function SetupScreen({
       </div>
 
       <div className="mt-2 flex flex-col gap-2">
-        <PrimaryButton onClick={onNext}>متابعة إلى أسماء اللاعبين</PrimaryButton>
+        <PrimaryButton onClick={onNext}>
+          {settings.prefs.playMode === "ai"
+            ? "متابعة — أنت ضد الذكاء الاصطناعي 🤖"
+            : "متابعة إلى أسماء اللاعبين"}
+        </PrimaryButton>
         <GhostButton onClick={onBack}>رجوع</GhostButton>
       </div>
     </ScreenShell>

@@ -5,10 +5,13 @@ import { PassPhone, PrimaryButton, RoleCard, SecretBadge, ScreenShell } from "./
 
 export default function RoleRevealScreen({
   game,
+  aiMode,
   onShow,
   onHide,
 }: {
   game: GameState;
+  /** In AI mode the role is shown only to the single human player. */
+  aiMode?: boolean;
   /** Called when the current player taps "show my role". */
   onShow: () => void;
   /** Called when the current player hides the role and passes the phone. */
@@ -31,20 +34,32 @@ export default function RoleRevealScreen({
   return (
     <ScreenShell>
       <p className="text-center text-xs font-extrabold text-muted-foreground">
-        توزيع الأدوار السرية — {game.revealCursor + 1} من {total}
+        {aiMode ? "دورك السري 🤫" : `توزيع الأدوار السرية — ${game.revealCursor + 1} من ${total}`}
       </p>
 
       {!revealed ? (
         <>
           <div className="flex-1" />
-          <PassPhone
-            name={player.name}
-            note="سيظهر الدور على الشاشة وحدك. أبقِ الهاتف بعيدًا عن أنظار الآخرين."
-          />
+          {aiMode ? (
+            <div className="rounded-2xl border border-accent/40 bg-accent/10 p-5 text-center">
+              <div className="text-3xl">🙋</div>
+              <p className="mt-2 text-lg font-black text-accent">أنت: {player.name}</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                سيظهر دورك السري على الشاشة وحدك. لن يرى أحد غيرك ما سيظهر الآن.
+              </p>
+            </div>
+          ) : (
+            <PassPhone
+              name={player.name}
+              note="سيظهر الدور على الشاشة وحدك. أبقِ الهاتف بعيدًا عن أنظار الآخرين."
+            />
+          )}
           <div className="flex-1" />
           <PrimaryButton onClick={show}>إظهار دوري 🤫</PrimaryButton>
           <p className="text-center text-xs text-muted-foreground">
-            لا تُطلع أي لاعب آخر على دورك طوال اللعبة.
+            {aiMode
+              ? "الشخصيات الأخرى تعرف أدوارها سرًا — لا يمكنك رؤيتها."
+              : "لا تُطلع أي لاعب آخر على دورك طوال اللعبة."}
           </p>
         </>
       ) : (
@@ -81,12 +96,14 @@ export default function RoleRevealScreen({
           <SecretBadge />
           <div className="flex-1" />
           <PrimaryButton onClick={hide} className="bg-secondary text-secondary-foreground shadow-none hover:bg-secondary/80">
-            إخفاء الدور وتسليم الهاتف
+            {aiMode ? "إخفاء الدور وبدء الليل 🌙" : "إخفاء الدور وتسليم الهاتف"}
           </PrimaryButton>
           <p className="text-center text-xs text-muted-foreground">
-            {game.revealCursor + 1 < total
-              ? `اللاعب التالي: ${nameOf(game.players, game.players[game.revealCursor + 1].id)}`
-              : "بعد الإخفاء سيبدأ الليل."}
+            {aiMode
+              ? "بعد الإخفاء سيبدأ الليل."
+              : game.revealCursor + 1 < total
+                ? `اللاعب التالي: ${nameOf(game.players, game.players[game.revealCursor + 1].id)}`
+                : "بعد الإخفاء سيبدأ الليل."}
           </p>
         </>
       )}

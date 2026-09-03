@@ -4,6 +4,10 @@ export type RoleId = "mafia" | "citizen" | "detective" | "doctor" | "jester";
 
 export type Winner = "citizens" | "mafia" | "jester";
 
+export type PlayMode = "friends" | "ai";
+
+export type Difficulty = "easy" | "medium" | "hard";
+
 export type NightStep = "mafia" | "doctor" | "detective";
 
 export type ScreenName =
@@ -62,6 +66,38 @@ export interface LogEntry {
   text: string;
 }
 
+/** Private knowledge + memory of one AI player. Everything here is strictly
+ *  limited to what that player's role allows them to know. */
+export interface AiState {
+  personalityId: string;
+  /** playerId → suspicion 0..100 (evolves from events + discussion). */
+  suspectScores: Record<string, number>;
+  /** playerId → trust 0..100. */
+  trustScores: Record<string, number>;
+  /** Known mafia teammates (mafia role only). */
+  mafiaTeammateIds: string[];
+  /** Investigation results — detective role only. */
+  detectiveResults: { targetId: string; isMafia: boolean }[];
+  /** Protection choices — doctor role only. */
+  savedIds: string[];
+  /** Public: players who died at night. */
+  knownNightKills: string[];
+  /** Public: players eliminated by day vote. */
+  knownEliminatedIds: string[];
+  /** Public: every recorded vote (voter → target). */
+  voteHistory: { voterId: string; targetId: string | null }[];
+  /** Public: discussion accusations. */
+  accusations: { accuserId: string; accusedId: string }[];
+  /** Public: discussion defenses. */
+  defenses: { accuserId: string; defenderId: string }[];
+}
+
+/** One line of AI discussion. */
+export interface Utterance {
+  playerId: string;
+  text: string;
+}
+
 /** Rules — used both as global defaults and as a per-game snapshot. */
 export interface GameSettings {
   discussionMinutes: number;
@@ -80,6 +116,9 @@ export interface Prefs {
   musicOn: boolean;
   showInstructions: boolean;
   playerCount: number;
+  /** Selected game mode in the setup screen. */
+  playMode: PlayMode;
+  difficulty: Difficulty;
 }
 
 export interface Settings {
@@ -91,6 +130,15 @@ export interface Settings {
 export interface GameState {
   players: Player[];
   settings: GameSettings;
+  /** friends = pass-and-play on one phone, ai = one human vs AI characters. */
+  playMode: PlayMode;
+  difficulty: Difficulty;
+  /** AI players' private memory — keyed by player id. */
+  aiStates: Record<string, AiState>;
+  /** Scripted AI discussion for the current day. */
+  discussionScript: Utterance[];
+  /** Guards against recording the same day's votes twice. */
+  aiVotesRecorded: boolean;
   night: number;
   revealCursor: number;
   nightActions: NightActions;

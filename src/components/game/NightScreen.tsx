@@ -73,6 +73,7 @@ function NightAction({
   step,
   stepIndex,
   totalSteps,
+  aiMode,
   onChoose,
   onDetectiveHide,
   onExit,
@@ -82,6 +83,8 @@ function NightAction({
   step: NightStep;
   stepIndex: number;
   totalSteps: number;
+  /** In AI mode the acting player is the human — no phone handoff. */
+  aiMode?: boolean;
   onChoose: (targetId: string) => void;
   onDetectiveHide: () => void;
   onExit: () => void;
@@ -201,7 +204,14 @@ function NightAction({
         </p>
       )}
 
-      <PassPhone name={handoffName} note={handoffNote} />
+      {aiMode ? (
+        <div className="rounded-2xl border border-accent/40 bg-accent/10 p-4 text-center">
+          <p className="text-sm font-black text-accent">أنت: {handoffName}</p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">{handoffNote}</p>
+        </div>
+      ) : (
+        <PassPhone name={handoffName} note={handoffNote} />
+      )}
 
       <div className="text-center">
         <h2 className="text-xl font-black">{heading}</h2>
@@ -227,6 +237,7 @@ function NightAction({
 export default function NightScreen({
   game,
   step,
+  aiMode,
   onStartNight,
   onChoose,
   onDetectiveHide,
@@ -235,6 +246,7 @@ export default function NightScreen({
 }: {
   game: GameState;
   step: NightStep | "intro";
+  aiMode?: boolean;
   onStartNight: () => void;
   onChoose: (targetId: string) => void;
   onDetectiveHide: () => void;
@@ -252,6 +264,7 @@ export default function NightScreen({
       step={step}
       stepIndex={stepIndex}
       totalSteps={sequence.length}
+      aiMode={aiMode}
       onChoose={onChoose}
       onDetectiveHide={onDetectiveHide}
       onExit={onExit}

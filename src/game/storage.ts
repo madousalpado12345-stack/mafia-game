@@ -8,6 +8,8 @@ export const DEFAULT_SETTINGS: Settings = {
     musicOn: false,
     showInstructions: true,
     playerCount: 8,
+    playMode: "friends",
+    difficulty: "medium",
   },
   rules: {
     discussionMinutes: 3,

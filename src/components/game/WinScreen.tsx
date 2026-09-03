@@ -1,6 +1,8 @@
 import { alivePlayers } from "@/game/engine";
+import { personaById } from "@/game/personas";
 import { ROLES } from "@/game/roles";
 import type { GameState } from "@/game/types";
+import { cn } from "@/lib/utils";
 import { GhostButton, PrimaryButton, ScreenShell, SectionTitle } from "./ui";
 
 export default function WinScreen({
@@ -63,25 +65,55 @@ export default function WinScreen({
       </div>
 
       <div className="flex flex-col gap-2.5">
-        <SectionTitle>الأدوار النهائية</SectionTitle>
+        <SectionTitle>النتيجة النهائية</SectionTitle>
+        <div className="grid grid-cols-[1fr_auto_auto] items-center gap-x-3 rounded-xl border border-white/10 bg-card/40 px-4 py-1.5 text-[10px] font-extrabold text-muted-foreground">
+          <span>اللاعب</span>
+          <span>الشخصية / الدور</span>
+          <span>النتيجة</span>
+        </div>
         <div className="flex flex-col gap-2">
           {game.players.map((p) => {
             const r = ROLES[p.role];
             const dead = p.status === "dead";
+            const persona = p.isAi ? personaById(game.aiStates?.[p.id]?.personalityId ?? "smart") : null;
             return (
               <div
                 key={p.id}
-                className="flex items-center gap-3 rounded-xl border border-white/10 bg-card/70 px-4 py-2.5"
+                className={cn(
+                  "grid grid-cols-[1fr_auto_auto] items-center gap-x-3 rounded-xl border border-white/10 bg-card/70 px-4 py-2.5",
+                  dead && "opacity-60",
+                )}
               >
-                <span className={dead ? "grayscale" : ""}>{dead ? "👻" : r.emoji}</span>
-                <span className={`flex-1 text-sm font-bold ${dead ? "line-through opacity-60" : ""}`}>
-                  {p.name}
+                <span className="flex items-center gap-2 overflow-hidden">
+                  <span className={dead ? "grayscale" : ""}>{dead ? "👻" : r.emoji}</span>
+                  <span className={`truncate text-sm font-bold ${dead ? "line-through" : ""}`}>
+                    {p.name}
+                  </span>
+                </span>
+                <span className="flex items-center gap-2">
+                  {p.isAi ? (
+                    <span className="rounded-md bg-white/5 px-2 py-0.5 text-[11px] font-bold text-muted-foreground">
+                      {persona?.emoji} {persona?.name}
+                    </span>
+                  ) : (
+                    <span className="rounded-md bg-white/5 px-2 py-0.5 text-[11px] font-bold text-accent">
+                      👤 أنت
+                    </span>
+                  )}
+                  <span
+                    className="rounded-md px-2 py-0.5 text-[11px] font-extrabold"
+                    style={{ color: r.color, background: r.soft }}
+                  >
+                    {r.name}
+                  </span>
                 </span>
                 <span
-                  className="rounded-md px-2 py-0.5 text-xs font-extrabold"
-                  style={{ color: r.color, background: r.soft }}
+                  className={cn(
+                    "rounded-md px-2 py-0.5 text-[11px] font-extrabold",
+                    dead ? "bg-white/5 text-muted-foreground" : "bg-emerald-500/10 text-emerald-400",
+                  )}
                 >
-                  {r.name}
+                  {dead ? "خارج 👻" : "حي ✓"}
                 </span>
               </div>
             );

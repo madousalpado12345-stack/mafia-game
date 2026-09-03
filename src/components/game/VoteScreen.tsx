@@ -9,6 +9,7 @@ export default function VoteScreen({
   voter,
   index,
   total,
+  aiMode,
   onVote,
   onExit,
   onSave,
@@ -17,12 +18,14 @@ export default function VoteScreen({
   voter: Player;
   index: number;
   total: number;
+  /** In AI mode the human votes directly — no phone handoff. */
+  aiMode?: boolean;
   /** Records the vote and moves to the next voter. */
   onVote: (targetId: string | null) => void;
   onExit: () => void;
   onSave: () => void;
 }) {
-  const [phase, setPhase] = useState<"handoff" | "choose">("handoff");
+  const [phase, setPhase] = useState<"handoff" | "choose">(aiMode ? "choose" : "handoff");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const alive = alivePlayers(game.players);
@@ -49,7 +52,9 @@ export default function VoteScreen({
       />
 
       <p className="text-center text-xs font-extrabold text-muted-foreground">
-        التصويت {revote ? "— جولة إعادة" : ""} — المصوت {index + 1} من {total}
+        {aiMode
+          ? "التصويت — صوتك أنت"
+          : `التصويت ${revote ? "— جولة إعادة" : ""} — المصوت ${index + 1} من ${total}`}
       </p>
 
       {phase === "handoff" ? (
@@ -67,7 +72,9 @@ export default function VoteScreen({
           <div className="text-center">
             <h2 className="text-xl font-black">اختر من تصوّت ضده</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              {voter.name} — لا يمكنك التصويت على نفسك.
+              {aiMode
+                ? "هذا صوتك أنت — لا يمكنك التصويت على نفسك."
+                : `${voter.name} — لا يمكنك التصويت على نفسك.`}
             </p>
           </div>
 
