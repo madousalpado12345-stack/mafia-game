@@ -95,13 +95,21 @@ export function mafiaTeammates(state: GameState, mafiaId: string): Player[] {
   );
 }
 
-/** Win conditions: citizens win when all mafia are gone; mafia wins when its
- *  number is equal to or greater than the non-mafia players able to vote. */
+/** Win conditions — recomputed from the CURRENT alive roster after every
+ *  elimination (night kill or day vote). Never based on kill counts.
+ *
+ *  • Mafia wins ONLY when aliveMafia >= aliveNonMafia (parity).
+ *  • Citizens win when the last mafia is gone (aliveMafia === 0).
+ *  • Otherwise the game continues. */
 export function checkWin(players: Player[]): Winner | null {
-  const mafiaAlive = players.filter((p) => p.status === "alive" && isMafiaTeam(p)).length;
-  if (mafiaAlive === 0) return "citizens";
-  const nonMafiaAlive = players.filter((p) => p.status === "alive" && !isMafiaTeam(p)).length;
-  if (mafiaAlive >= nonMafiaAlive) return "mafia";
+  const alive = players.filter((p) => p.status === "alive");
+  const aliveMafia = alive.filter((p) => isMafiaTeam(p)).length;
+  const aliveNonMafia = alive.length - aliveMafia;
+
+  // المافيا تفوز فقط عندما تساوي أو تتجاوز عدد غير المافيا الأحياء.
+  if (aliveMafia >= aliveNonMafia) return "mafia";
+  // المواطنون يفوزون عندما لا تبقى أي مافيا على قيد الحياة.
+  if (aliveMafia === 0) return "citizens";
   return null;
 }
 
