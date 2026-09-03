@@ -366,6 +366,30 @@ export function personaById(id: string): Persona {
   return PERSONAS.find((p) => p.id === id) ?? PERSONAS[0];
 }
 
+/** Short Arabic trait label for a persona (used in the result tables). */
+export function personaTrait(id: string): string {
+  switch (id) {
+    case "smart":
+      return "ذكي";
+    case "confident":
+      return "واثق";
+    case "skeptic":
+      return "شكاك";
+    case "quiet":
+      return "هادئ";
+    case "funny":
+      return "مرح";
+    case "deceiver":
+      return "مخادع";
+    case "aggressive":
+      return "عدواني";
+    case "analyst":
+      return "محلل";
+    default:
+      return "ذكي";
+  }
+}
+
 /** Arabic names for AI players — personas first, then fallback names. */
 export function aiNamesFor(count: number, exclude: string[] = []): string[] {
   const names: string[] = [];

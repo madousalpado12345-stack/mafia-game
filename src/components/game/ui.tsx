@@ -273,6 +273,22 @@ export function formatTime(totalSeconds: number): string {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
+/** Arabic plural forms for a night count (ليلة / ليلتان / ليالٍ / ليلة). */
+export function formatNights(n: number): string {
+  if (n === 1) return "ليلة واحدة";
+  if (n === 2) return "ليلتين";
+  if (n >= 3 && n <= 10) return `${n} ليالٍ`;
+  return `${n} ليلة`;
+}
+
+/** Arabic plural forms for a surviving-player count. */
+export function formatSurvivors(n: number): string {
+  if (n === 1) return "لاعب واحد";
+  if (n === 2) return "لاعبان";
+  if (n >= 3 && n <= 10) return `${n} لاعبين`;
+  return `${n} لاعبًا`;
+}
+
 /** Fires a callback once, after a delay, while `active` is true. Used to keep
  *  AI-mode games moving on their own when the human is a spectator. */
 export function useAutoAdvance(active: boolean | undefined, cb: () => void, delay = 2400) {

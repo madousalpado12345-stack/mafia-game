@@ -35,13 +35,17 @@ export default function AiDiscussionScreen({
   onDoneRef.current = onDone;
   const onTickRef = useRef(onTick);
   onTickRef.current = onTick;
+  // Pausing the chat must also pause the countdown — otherwise the discussion
+  // time burns out while the human is reading/joining in (same as friends mode).
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
 
   // Single countdown interval — cleaned up on pause, unmount and transitions.
   useEffect(() => {
     if (secondsLeft <= 0) return;
     const iv = setInterval(() => {
       try {
-        onTickRef.current();
+        if (!pausedRef.current) onTickRef.current();
       } catch (err) {
         console.error("[ai discussion tick]", err);
       }
@@ -115,6 +119,7 @@ export default function AiDiscussionScreen({
           {formatTime(secondsLeft)}
         </span>
         <span className="text-[10px] font-bold text-muted-foreground">متبقي من وقت النقاش</span>
+        {paused && <span className="text-[10px] font-extrabold text-primary">— موقوف ⏸</span>}
       </div>
 
       <div className="game-scroll flex max-h-[48dvh] flex-1 flex-col gap-3 overflow-y-auto pr-1">
@@ -192,22 +197,21 @@ function ChatBubble({
   complete?: boolean;
   active?: boolean;
 }) {
+  const speaking = active && !complete;
   return (
     <div
       className={cn(
-        "flex items-start gap-2.5 rounded-2xl border border-white/10 bg-card/70 p-3 transition-opacity",
+        "flex items-start gap-2.5 rounded-2xl border p-3 transition-all",
+        speaking
+          ? "border-accent/50 bg-accent/[0.07] shadow-[0_0_26px_-12px_rgba(255,196,87,0.55)]"
+          : "border-white/10 bg-card/70",
         !complete && !active && "opacity-70",
       )}
     >
       <div className="min-w-0 flex-1">
-        <p
-          className={cn(
-            "flex items-center gap-2 text-xs font-extrabold text-accent",
-            active && "animate-glow",
-          )}
-        >
+        <p className="flex items-center gap-2 text-xs font-extrabold text-accent">
           {name}
-          {active && !complete && <span className="text-[9px] font-bold text-accent/70">يتحدث...</span>}
+          {speaking && <span className="text-[9px] font-bold text-accent/70">يتحدث...</span>}
         </p>
         <p className="mt-0.5 text-sm leading-6 text-foreground/90">
           {text}

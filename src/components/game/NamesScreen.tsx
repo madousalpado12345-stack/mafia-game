@@ -1,4 +1,4 @@
-import { aiNamesFor, PERSONAS } from "@/game/personas";
+import { aiNamesFor, PERSONAS, personaTrait } from "@/game/personas";
 import { randomNames } from "@/game/names";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -98,23 +98,7 @@ export default function NamesScreen({
                 className="flex items-center gap-3 rounded-xl border border-white/10 bg-card/70 px-4 py-2.5"
               >
                 <span className="flex-1 text-sm font-bold">{n}</span>
-                <span className="text-xs text-muted-foreground">
-                  {persona.id === "smart"
-                    ? "ذكي"
-                    : persona.id === "confident"
-                      ? "واثق"
-                      : persona.id === "skeptic"
-                        ? "شكاك"
-                        : persona.id === "quiet"
-                          ? "هادئ"
-                          : persona.id === "funny"
-                            ? "مرح"
-                            : persona.id === "deceiver"
-                              ? "مخادع"
-                              : persona.id === "aggressive"
-                                ? "عدواني"
-                                : "محلل"}
-                </span>
+                <span className="text-xs text-muted-foreground">{personaTrait(persona.id)}</span>
               </div>
             );
           })}

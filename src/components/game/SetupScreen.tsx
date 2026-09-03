@@ -272,8 +272,8 @@ export default function SetupScreen({
           </button>
         </div>
         <p className="text-center text-xs leading-5 text-muted-foreground">
-          {mafiaValue} مافيا ضد {playerCount - mafiaValue} لاعبًا آخر — الحد الأقصى المسموح هو{" "}
-          {mafiaMax} (حتى لا تتفوق المافيا عددًا من البداية).
+          تُوزَّع الأدوار: {mafiaValue} مافيا و {playerCount - mafiaValue} من اللاعبين الآخرين —
+          الحد الأقصى المسموح هو {mafiaMax} مافيا ليبقى التوزيع متوازنًا.
         </p>
         {rules.mafiaCount !== null && (
           <button

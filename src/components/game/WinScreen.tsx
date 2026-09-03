@@ -1,9 +1,16 @@
 import { alivePlayers } from "@/game/engine";
-import { personaById } from "@/game/personas";
+import { personaTrait } from "@/game/personas";
 import { ROLES } from "@/game/roles";
 import type { GameState } from "@/game/types";
 import { cn } from "@/lib/utils";
-import { GhostButton, PrimaryButton, ScreenShell, SectionTitle } from "./ui";
+import {
+  GhostButton,
+  PrimaryButton,
+  ScreenShell,
+  SectionTitle,
+  formatNights,
+  formatSurvivors,
+} from "./ui";
 
 export default function WinScreen({
   game,
@@ -19,6 +26,9 @@ export default function WinScreen({
   const jesterWin = game.winner === "jester";
   const mafiaWin = game.winner === "mafia";
   const alive = alivePlayers(game.players);
+  // Only in AI mode is there a single human — friends mode is pass-and-play,
+  // so the "أنت" badge must never appear there.
+  const aiMode = game.playMode === "ai";
 
   return (
     <ScreenShell>
@@ -57,10 +67,10 @@ export default function WinScreen({
 
       <div className="rounded-2xl border border-white/10 bg-card/70 p-4 text-center">
         <p className="text-xs font-extrabold text-muted-foreground">
-          استمرت اللعبة {game.night} {game.night === 1 ? "ليلة" : game.night === 2 ? "ليلتين" : "ليالي"}
+          استمرت اللعبة {formatNights(game.night)}
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
-          {alive.length} {alive.length === 1 ? "لاعب نجا" : "لاعبين نجوا"} في النهاية
+          نجا {formatSurvivors(alive.length)} في النهاية
         </p>
       </div>
 
@@ -68,14 +78,14 @@ export default function WinScreen({
         <SectionTitle>النتيجة النهائية</SectionTitle>
         <div className="grid grid-cols-[1fr_auto_auto] items-center gap-x-3 rounded-xl border border-white/10 bg-card/40 px-4 py-1.5 text-[10px] font-extrabold text-muted-foreground">
           <span>اللاعب</span>
-          <span>الشخصية / الدور</span>
+          <span>{aiMode ? "الشخصية / الدور" : "الدور"}</span>
           <span>النتيجة</span>
         </div>
         <div className="flex flex-col gap-2">
           {game.players.map((p) => {
             const r = ROLES[p.role];
             const dead = p.status === "dead";
-            const persona = p.isAi ? personaById(game.aiStates?.[p.id]?.personalityId ?? "smart") : null;
+            const trait = personaTrait(game.aiStates?.[p.id]?.personalityId ?? "smart");
             return (
               <div
                 key={p.id}
@@ -89,30 +99,16 @@ export default function WinScreen({
                     {p.name}
                   </span>
                 </span>
-                <span className="flex items-center gap-2">
+                <span className="flex items-center justify-end gap-1.5">
                   {p.isAi ? (
                     <span className="rounded-md bg-white/5 px-2 py-0.5 text-[11px] font-bold text-muted-foreground">
-                      {persona?.id === "smart"
-                        ? "ذكي"
-                        : persona?.id === "confident"
-                          ? "واثق"
-                          : persona?.id === "skeptic"
-                            ? "شكاك"
-                            : persona?.id === "quiet"
-                              ? "هادئ"
-                              : persona?.id === "funny"
-                                ? "مرح"
-                                : persona?.id === "deceiver"
-                                  ? "مخادع"
-                                  : persona?.id === "aggressive"
-                                    ? "عدواني"
-                                    : "محلل"}
+                      {trait}
                     </span>
-                  ) : (
+                  ) : aiMode ? (
                     <span className="rounded-md bg-white/5 px-2 py-0.5 text-[11px] font-bold text-accent">
                       أنت
                     </span>
-                  )}
+                  ) : null}
                   <span
                     className="rounded-md px-2 py-0.5 text-[11px] font-extrabold"
                     style={{ color: r.color, background: r.soft }}
