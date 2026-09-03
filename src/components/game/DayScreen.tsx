@@ -1,0 +1,105 @@
+import { alivePlayers, deadPlayers, playerById } from "@/game/engine";
+import { ROLES } from "@/game/roles";
+import type { GameState } from "@/game/types";
+import { GameTopBar, PlayerStatusRow, PrimaryButton, ScreenShell, SectionTitle } from "./ui";
+
+function LogList({ game }: { game: GameState }) {
+  return (
+    <details className="group rounded-xl border border-white/10 bg-card/70">
+      <summary className="cursor-pointer list-none px-4 py-3 text-sm font-bold text-accent">
+        📜 سجل الأحداث
+        <span className="float-left text-xs text-muted-foreground">اضغط للعرض</span>
+      </summary>
+      <div className="flex flex-col gap-2 border-t border-white/10 px-4 py-3">
+        {game.log.length === 0 && (
+          <p className="text-sm text-muted-foreground">لا توجد أحداث بعد.</p>
+        )}
+        {game.log.map((entry) => (
+          <p key={entry.id} className="text-xs leading-5 text-muted-foreground">
+            <span className="font-extrabold text-accent">
+              الليلة {entry.night} — {entry.phase === "night" ? "الليل" : "النهار"}:
+            </span>{" "}
+            {entry.text}
+          </p>
+        ))}
+      </div>
+    </details>
+  );
+}
+
+export default function DayScreen({
+  game,
+  onContinue,
+  onExit,
+  onSave,
+}: {
+  game: GameState;
+  onContinue: () => void;
+  onExit: () => void;
+  onSave: () => void;
+}) {
+  const eliminatedId = game.nightEliminatedId;
+  const eliminated = eliminatedId ? playerById(game.players, eliminatedId) : null;
+  const reveal = game.settings.revealRoleOnElimination;
+
+  return (
+    <ScreenShell>
+      <GameTopBar title={`النهار — الليلة ${game.night}`} onExit={onExit} onSave={onSave} />
+
+      <div className="text-center">
+        <div className="animate-float text-8xl">☀️</div>
+        <h1 className="mt-4 text-4xl font-black text-glow-gold">انتهى الليل</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          استيقظوا جميعًا... ماذا حدث أثناء الليل؟
+        </p>
+      </div>
+
+      {eliminated ? (
+        <div className="rounded-2xl border border-red-500/40 bg-red-500/10 p-6 text-center">
+          <div className="text-5xl">⚰️</div>
+          <h2 className="mt-3 text-2xl font-black text-red-400 text-glow">
+            تم إخراج {eliminated.name} من اللعبة
+          </h2>
+          {reveal && (
+            <p className="mt-2 text-sm font-bold text-muted-foreground">
+              وكان دوره: {ROLES[eliminated.role].emoji} {ROLES[eliminated.role].name}
+            </p>
+          )}
+          <p className="mt-3 text-xs text-muted-foreground">
+            {eliminated.name} يبقى معكم لكنه لا يصوّت ولا يستخدم قدرته. 👻
+          </p>
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-6 text-center">
+          <div className="text-5xl">🌿</div>
+          <h2 className="mt-3 text-2xl font-black text-emerald-400">
+            لم يخرج أي لاعب هذه الليلة
+          </h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            إما أن الطبيب أنقذ الهدف، أو أن المافيا لم تتحرك. تابعوا النقاش بحذر.
+          </p>
+        </div>
+      )}
+
+      <div className="flex flex-col gap-2.5">
+        <SectionTitle>اللاعبون ({alivePlayers(game.players).length} حي)</SectionTitle>
+        <div className="flex flex-col gap-2">
+          {game.players.map((p) => (
+            <PlayerStatusRow key={p.id} player={p} />
+          ))}
+        </div>
+        {deadPlayers(game.players).length > 0 && (
+          <p className="text-center text-xs text-muted-foreground">
+            👻 خارج اللعبة: {deadPlayers(game.players).map((p) => p.name).join("، ")}
+          </p>
+        )}
+      </div>
+
+      <LogList game={game} />
+
+      <div className="mt-2">
+        <PrimaryButton onClick={onContinue}>بدء النقاش 🗣️</PrimaryButton>
+      </div>
+    </ScreenShell>
+  );
+}
