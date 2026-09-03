@@ -27,6 +27,8 @@ export const DEFAULT_SETTINGS: Settings = {
     detectiveEnabled: true,
     doctorEnabled: true,
     jesterEnabled: true,
+    // null = automatic recommended count per player count (default behavior).
+    mafiaCount: null,
   },
 };
 

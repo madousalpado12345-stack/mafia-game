@@ -139,6 +139,10 @@ export interface GameSettings {
   detectiveEnabled: boolean;
   doctorEnabled: boolean;
   jesterEnabled: boolean;
+  /** How many mafia players are dealt. `null` = automatic (the recommended
+   *  count for the current number of players). Once the host picks a number,
+   *  the deck contains exactly that many mafia — never re-randomized. */
+  mafiaCount: number | null;
 }
 
 /** UI / device preferences. */

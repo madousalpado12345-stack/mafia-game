@@ -4,6 +4,7 @@
 
 import { applyVoteElimination, checkWin, computeVoteOutcome, createGame, resolveNight, startNextNight } from "@/game/engine";
 import { aiVotesFor, humanPlayer } from "@/game/ai";
+import { maxMafiaCount } from "@/game/roles";
 import { DEFAULT_SETTINGS } from "@/game/storage";
 import type { GameState, Player, Winner } from "@/game/types";
 
@@ -210,6 +211,131 @@ console.log("\nفحص مباريات الأصدقاء الكاملة (تصويت
   }
   assert(earlyMafiaKillWin === 0, `لا يوجد فوز مافيا بعد قتل واحد بينما هي أقل عددًا (0 حالات من ${N})`);
   console.log(`     التوزيع: مواطنون ${wins.citizens} · مافيا ${wins.mafia} · مهرج ${wins.jester}`);
+}
+
+console.log("\nتوزيع عدد المافيا المختار (يطابق الاختيار بالضبط):");
+{
+  const mkRules = (mafiaCount: number | null) => ({
+    ...DEFAULT_SETTINGS.rules,
+    mafiaCount,
+  });
+
+  // 8 لاعبين: اختيار 1 / 2 / 3 / الحد الأقصى (3)
+  for (const chosen of [1, 2, 3]) {
+    for (let t = 0; t < 200; t++) {
+      const g = createGame(Array.from({ length: 8 }, (_, i) => `ل${i}`), mkRules(chosen), "friends", "medium");
+      const m = g.players.filter((p) => p.role === "mafia").length;
+      if (m !== chosen) {
+        failures += 1;
+        console.error(`  ❌ 8 لاعبين باختيار ${chosen} مافيا → وُزّع ${m}`);
+      }
+    }
+  }
+  assert(true, "8 لاعبين: اختيار 1/2/3 يوزّع بالضبط 1/2/3 مافيا (200 محاولة لكل اختيار)");
+
+  // 6 لاعبين: الحد الأقصى 2، والاختيار 3 يُقصّ تلقائيًا إلى 2
+  for (let t = 0; t < 200; t++) {
+    const g = createGame(Array.from({ length: 6 }, (_, i) => `ل${i}`), mkRules(3), "friends", "medium");
+    const m = g.players.filter((p) => p.role === "mafia").length;
+    if (m !== 2) {
+      failures += 1;
+      console.error(`  ❌ 6 لاعبين باختيار 3 → يجب أن تُقصّ إلى 2، وُزّع ${m}`);
+    }
+  }
+  assert(true, "6 لاعبين: اختيار 3 يُقصّ تلقائيًا إلى الحد الأقصى 2");
+
+  // 16 لاعبين: الحد الأقصى 7 (نصف اللاعبين ناقص واحد حتى لا تتفوق المافيا)
+  for (let t = 0; t < 200; t++) {
+    const g = createGame(Array.from({ length: 16 }, (_, i) => `ل${i}`), mkRules(7), "friends", "medium");
+    const m = g.players.filter((p) => p.role === "mafia").length;
+    if (m !== 7) {
+      failures += 1;
+      console.error(`  ❌ 16 لاعبين باختيار 7 → وُزّع ${m}`);
+    }
+    const nm = g.players.filter((p) => p.role !== "mafia").length;
+    if (nm !== 9 || nm <= m) {
+      failures += 1;
+      console.error(`  ❌ 16 لاعبين: غير المافيا ${nm} يجب أن يكون 9 (> المافيا)`);
+    }
+  }
+  assert(true, "16 لاعبين: الحد الأقصى 7 مافيا ضد 9 آخرين");
+
+  // أقصى عدد مسموح لكل عدد لاعبين (6..16) — التوزيع يطابق الحد دائمًا
+  for (let n = 6; n <= 16; n++) {
+    const maxM = maxMafiaCount(n);
+    for (let t = 0; t < 100; t++) {
+      const g = createGame(Array.from({ length: n }, (_, i) => `ل${i}`), mkRules(99), "friends", "medium");
+      const m = g.players.filter((p) => p.role === "mafia").length;
+      if (m !== maxM) {
+        failures += 1;
+        console.error(`  ❌ ${n} لاعبين: الحد الأقصى ${maxM}، وُزّع ${m}`);
+      }
+      if (m >= n - m) {
+        failures += 1;
+        console.error(`  ❌ ${n} لاعبين: مافيا ${m} >= غير مافيا ${n - m} عند البداية!`);
+      }
+    }
+  }
+  assert(true, "العدد الأقصى لكل عدد لاعبين 6–16: يوزَّع بالضبط ولا يسبق التوازن من البداية");
+}
+
+console.log("\nمباريات كاملة بعدد مافيا 1 ثم بالحد الأقصى (فوز صالح):");
+{
+  for (const chosen of [1, 2, 7]) {
+    let invalid = 0;
+    let ended = 0;
+    const N = 150;
+    for (let t = 0; t < N; t++) {
+      const g = createGame(
+        Array.from({ length: 16 }, (_, i) => (i === 0 ? "أنت" : `AI${i}`)),
+        { ...DEFAULT_SETTINGS.rules, mafiaCount: chosen },
+        "ai",
+        "medium",
+      );
+      let guard = 0;
+      while (!g.winner && guard < 40) {
+        guard += 1;
+        const aliveAll = g.players.filter((p) => p.status === "alive");
+        const mafiaA = aliveAll.filter((p) => p.role === "mafia");
+        const targets = aliveAll.filter((p) => p.role !== "mafia");
+        if (mafiaA.length > 0 && targets.length > 0) g.nightActions.mafiaTargetId = targets[Math.floor(Math.random() * targets.length)].id;
+        const doc = aliveAll.find((p) => p.role === "doctor");
+        if (doc) {
+          const cands = g.settings.doctorCanHealSelf ? aliveAll : aliveAll.filter((p) => p.id !== doc.id);
+          g.nightActions.doctorSaveId = cands[Math.floor(Math.random() * cands.length)]?.id ?? null;
+        }
+        const det = aliveAll.find((p) => p.role === "detective");
+        if (det) {
+          const cands = aliveAll.filter((p) => p.id !== det.id);
+          if (cands.length > 0) g.nightActions.detectiveCheckId = cands[Math.floor(Math.random() * cands.length)].id;
+        }
+        const wN = resolveNight(g);
+        if (wN) g.winner = wN;
+        if (g.winner) break;
+        const voters = g.players.filter((p) => p.status === "alive");
+        const votes = [];
+        for (const v of voters) {
+          const cands = voters.filter((p) => p.id !== v.id);
+          if (cands.length === 0) continue;
+          votes.push({ voterId: v.id, targetId: cands[Math.floor(Math.random() * cands.length)].id });
+        }
+        g.votes = votes;
+        const outcome = computeVoteOutcome(g.votes, false);
+        const w = applyVoteElimination(g, outcome);
+        if (w) g.winner = w;
+        if (g.winner) break;
+        startNextNight(g);
+      }
+      if (g.winner) {
+        ended += 1;
+        const m = g.players.filter((p) => p.status === "alive" && p.role === "mafia").length;
+        const nm = g.players.filter((p) => p.status === "alive" && p.role !== "mafia").length;
+        if (g.winner === "mafia" && m < nm) invalid += 1;
+        if (g.winner === "citizens" && m > 0) invalid += 1;
+      }
+    }
+    assert(ended === N && invalid === 0, `عدد مافيا ${chosen} (16 لاعبًا): ${ended}/${N} مباراة انتهت بفائز صالح`);
+  }
 }
 
 console.log("\nفحص مباريات AI الكاملة (مسار Landing نفسه):");

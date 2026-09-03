@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import { DIFFICULTY_META, difficultyMeta, safeDifficulty } from "@/game/ai";
-import { ROLES } from "@/game/roles";
+import { ROLES, effectiveMafiaCount, maxMafiaCount, recommendedMafiaCount } from "@/game/roles";
 import type { Difficulty, RoleId, Settings } from "@/game/types";
 import type { ReactNode } from "react";
 import { toast } from "sonner";
@@ -176,9 +176,41 @@ export default function SetupScreen({
   onNext: () => void;
 }) {
   const rules = settings.rules;
+  const playerCount = settings.prefs.playerCount;
 
   const setRules = (patch: Partial<Settings["rules"]>) =>
     onChange({ ...settings, rules: { ...rules, ...patch } });
+
+  // ---- عدد المافيا --------------------------------------------------------
+  const mafiaValue = effectiveMafiaCount(playerCount, rules);
+  const mafiaMax = maxMafiaCount(playerCount);
+  const mafiaRec = recommendedMafiaCount(playerCount);
+
+  /** Writes the exact chosen count (null = back to the automatic/recommended). */
+  const setMafiaCount = (value: number) => {
+    const clamped = Math.max(1, Math.min(Math.floor(value), mafiaMax));
+    const next: Settings = {
+      ...settings,
+      rules: { ...rules, mafiaCount: clamped === mafiaRec ? null : clamped },
+    };
+    onChange(next);
+  };
+
+  /** Changing the player count re-clamps any explicit mafia choice to the new
+   *  valid range so the shown number is always exactly what will be dealt. */
+  const pickPlayerCount = (count: number) => {
+    const explicit = rules.mafiaCount;
+    const clamped =
+      explicit === null ? null : Math.max(1, Math.min(explicit, maxMafiaCount(count)));
+    onChange({
+      ...settings,
+      prefs: { ...settings.prefs, playerCount: count },
+      rules: {
+        ...rules,
+        mafiaCount: clamped === null ? null : clamped === recommendedMafiaCount(count) ? null : clamped,
+      },
+    });
+  };
 
   return (
     <ScreenShell>
@@ -202,13 +234,56 @@ export default function SetupScreen({
           {COUNTS.map((c) => (
             <Chip
               key={c}
-              selected={settings.prefs.playerCount === c}
-              onClick={() => onChange({ ...settings, prefs: { ...settings.prefs, playerCount: c } })}
+              selected={playerCount === c}
+              onClick={() => pickPlayerCount(c)}
             >
               {c}
             </Chip>
           ))}
         </div>
+      </div>
+
+      <div className="flex flex-col gap-2.5">
+        <SectionTitle>عدد المافيا</SectionTitle>
+        <div className="flex items-stretch justify-between gap-3 rounded-2xl border border-white/10 bg-card/70 p-3">
+          <button
+            type="button"
+            disabled={mafiaValue <= 1}
+            onClick={() => setMafiaCount(mafiaValue - 1)}
+            className="w-16 rounded-xl border border-white/10 bg-white/5 text-2xl font-black text-foreground transition-all hover:border-primary/50 active:scale-95 disabled:pointer-events-none disabled:opacity-30"
+            aria-label="إنقاص عدد المافيا"
+          >
+            −
+          </button>
+          <div className="flex flex-1 flex-col items-center justify-center">
+            <p className="text-4xl font-black tabular-nums text-primary">{mafiaValue}</p>
+            <p className="text-[11px] font-bold text-muted-foreground">
+              {rules.mafiaCount === null ? "تلقائي (موصى به)" : "مافيا في اللعبة"}
+            </p>
+          </div>
+          <button
+            type="button"
+            disabled={mafiaValue >= mafiaMax}
+            onClick={() => setMafiaCount(mafiaValue + 1)}
+            className="w-16 rounded-xl border border-white/10 bg-white/5 text-2xl font-black text-foreground transition-all hover:border-primary/50 active:scale-95 disabled:pointer-events-none disabled:opacity-30"
+            aria-label="زيادة عدد المافيا"
+          >
+            +
+          </button>
+        </div>
+        <p className="text-center text-xs leading-5 text-muted-foreground">
+          {mafiaValue} مافيا ضد {playerCount - mafiaValue} لاعبًا آخر — الحد الأقصى المسموح هو{" "}
+          {mafiaMax} (حتى لا تتفوق المافيا عددًا من البداية).
+        </p>
+        {rules.mafiaCount !== null && (
+          <button
+            type="button"
+            onClick={() => setMafiaCount(mafiaRec)}
+            className="text-center text-xs font-bold text-accent underline-offset-4 hover:underline"
+          >
+            ↩ العودة إلى العدد التلقائي الموصى به ({mafiaRec})
+          </button>
+        )}
       </div>
 
       <div className="flex flex-col gap-2.5">

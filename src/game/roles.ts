@@ -95,9 +95,39 @@ export function mafiaCountFor(playerCount: number): number {
   return 5;
 }
 
+/** Largest mafia count that still makes sense for a player count: the game
+ *  must start with more non-mafia than mafia (so parity is never true at the
+ *  very first check), and there has to be room left for the other roles. */
+export function maxMafiaCount(playerCount: number): number {
+  return Math.max(1, Math.floor((playerCount - 1) / 2));
+}
+
+/** Recommended (standard) mafia count for a player count — used whenever the
+ *  host has not chosen a custom count. Matches the classic distribution. */
+export function recommendedMafiaCount(playerCount: number): number {
+  return Math.min(mafiaCountFor(playerCount), maxMafiaCount(playerCount));
+}
+
+/** The mafia count the deck will actually deal for these rules:
+ *  an explicit host choice wins (clamped to a valid range), otherwise the
+ *  recommended count for the player count is used. Never random. */
+export function effectiveMafiaCount(
+  playerCount: number,
+  rules: Pick<GameSettings, "mafiaCount"> | undefined,
+): number {
+  const max = maxMafiaCount(playerCount);
+  const explicit = rules?.mafiaCount;
+  if (typeof explicit === "number" && Number.isFinite(explicit) && explicit >= 1) {
+    return Math.max(1, Math.min(Math.floor(explicit), max));
+  }
+  return recommendedMafiaCount(playerCount);
+}
+
 export function buildRoleDeck(playerCount: number, rules: GameSettings): RoleId[] {
   const deck: RoleId[] = [];
-  for (let i = 0; i < mafiaCountFor(playerCount); i++) deck.push("mafia");
+  // Deal exactly the chosen mafia count (or the recommended one when null).
+  const mafia = effectiveMafiaCount(playerCount, rules);
+  for (let i = 0; i < mafia; i++) deck.push("mafia");
   if (rules.detectiveEnabled) deck.push("detective");
   if (rules.doctorEnabled) deck.push("doctor");
   if (rules.jesterEnabled) deck.push("jester");
