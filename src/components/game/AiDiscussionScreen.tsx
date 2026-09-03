@@ -4,7 +4,7 @@ import { playSound } from "@/game/sound";
 import type { GameState } from "@/game/types";
 import { cn } from "@/lib/utils";
 import { useEffect, useRef, useState } from "react";
-import { GameTopBar, PrimaryButton } from "./ui";
+import { formatTime, GameTopBar, PrimaryButton } from "./ui";
 
 export default function AiDiscussionScreen({
   game,
@@ -23,6 +23,26 @@ export default function AiDiscussionScreen({
   const [paused, setPaused] = useState(false);
   const [fast, setFast] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
+
+  // Real countdown — starts as soon as the discussion screen mounts. When it
+  // hits zero the discussion ends automatically and voting begins.
+  const initialSeconds = Math.max(1, Math.round((game.settings.discussionMinutes || 3) * 60));
+  const [secondsLeft, setSecondsLeft] = useState(initialSeconds);
+  const timerFiredRef = useRef(false);
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
+
+  useEffect(() => {
+    const t = setInterval(() => setSecondsLeft((s) => Math.max(0, s - 1)), 1000);
+    return () => clearInterval(t); // timers are cleaned up on any transition
+  }, []);
+
+  useEffect(() => {
+    if (secondsLeft > 0 || timerFiredRef.current) return;
+    timerFiredRef.current = true;
+    playSound("timerEnd");
+    onDoneRef.current();
+  }, [secondsLeft]);
 
   const current = shown < script.length ? script[shown] : null;
   const done = shown >= script.length;
@@ -66,6 +86,17 @@ export default function AiDiscussionScreen({
             ? `شاهد حوار الشخصيات حولك يا ${human.name} — راقب اتهاماتهم ودفاعاتهم ثم صوّت في النهاية.`
             : "شاهد حوار الشخصيات بينما تتواصل المباراة تلقائيًا."}
         </p>
+      </div>
+
+      <div className="mx-auto flex items-center gap-2 rounded-full border border-accent/30 bg-card/70 px-4 py-1.5">
+        <span
+          className={`text-lg font-black tabular-nums tracking-tight ${
+            secondsLeft <= 10 ? "animate-pulse text-primary" : "text-accent text-glow-gold"
+          }`}
+        >
+          {formatTime(secondsLeft)}
+        </span>
+        <span className="text-[10px] font-bold text-muted-foreground">متبقي من وقت النقاش</span>
       </div>
 
       <div className="game-scroll flex max-h-[52dvh] flex-1 flex-col gap-3 overflow-y-auto pr-1">
@@ -127,9 +158,14 @@ export default function AiDiscussionScreen({
             </button>
           </div>
         )}
-        {done && (
-          <PrimaryButton onClick={onDone}>الانتقال إلى التصويت 🗳️</PrimaryButton>
-        )}
+      {done && (
+        <PrimaryButton onClick={onDone}>الانتقال إلى التصويت 🗳️</PrimaryButton>
+      )}
+      {done && secondsLeft > 0 && (
+        <p className="text-center text-[10px] text-muted-foreground">
+          انتهى الحوار — عند انتهاء المؤقت سيبدأ التصويت تلقائيًا، أو اضغط الزر أعلاه الآن.
+        </p>
+      )}
       </div>
     </div>
   );

@@ -80,6 +80,56 @@ function RoleIntro({ aiMode, onBegin }: { aiMode: boolean; onBegin: () => void }
   );
 }
 
+/** Shown once in AI mode when the human has died: the match keeps running and
+ *  the human watches it as a spectator. */
+function SpectateScreen({
+  game,
+  onContinue,
+  onExit,
+  onSave,
+}: {
+  game: GameState;
+  onContinue: () => void;
+  onExit: () => void;
+  onSave: () => void;
+}) {
+  const human = humanPlayer(game.players);
+  return (
+    <ScreenShell>
+      <div className="flex items-center justify-between">
+        <button
+          type="button"
+          onClick={onExit}
+          className="rounded-lg border border-white/10 bg-card/60 px-3 py-1.5 text-xs font-bold text-muted-foreground transition-colors hover:text-foreground"
+        >
+          ✕ القائمة
+        </button>
+        <button
+          type="button"
+          onClick={onSave}
+          className="rounded-lg border border-white/10 bg-card/60 px-3 py-1.5 text-xs font-bold text-muted-foreground transition-colors hover:text-foreground"
+        >
+          💾 حفظ
+        </button>
+      </div>
+      <div className="flex-1" />
+      <div className="text-center">
+        <div className="animate-float text-8xl">👻</div>
+        <h1 className="mt-4 text-3xl font-black text-glow">لقد خرجت من اللعبة</h1>
+        <p className="mx-auto mt-3 max-w-[310px] text-sm leading-7 text-muted-foreground">
+          {human ? `${human.name}، ` : ""}لا يمكنك التصويت أو استخدام قدرتك بعد الآن، لكن
+          المباراة مستمرة ويمكنك متابعتها كمشاهد حتى النهاية.
+        </p>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-card/70 p-4 text-center text-xs leading-6 text-muted-foreground">
+        👁️ ستتابع تلقائيًا قرارات الليل والنقاش والتصويت بين اللاعبين المتبقين.
+      </div>
+      <div className="flex-1" />
+      <PrimaryButton onClick={onContinue}>متابعة المشاهدة 👁️</PrimaryButton>
+    </ScreenShell>
+  );
+}
+
 const INITIAL_STATE: AppState = {
   screen: "menu",
   game: null,
@@ -102,6 +152,31 @@ export default function Landing() {
       music: state.settings.prefs.musicOn,
     });
   }, [state.settings.prefs.soundOn, state.settings.prefs.musicOn]);
+
+  /** Screen to continue to after the one-time spectator notice (AI mode). */
+  const [spectateNext, setSpectateNext] = useState<ScreenName | null>(null);
+
+  /** After a night/vote resolution: if the human just died in AI mode and the
+   *  match continues, show the spectator screen once before the natural screen.
+   *  Never stalls the game — the natural screen follows on "متابعة المشاهدة". */
+  const routeResolved = (game: GameState, naturalNext: ScreenName): ScreenName => {
+    if (naturalNext === "win" || !isAiMode(game)) return naturalNext;
+    const human = humanPlayer(game.players);
+    if ((!human || human.status === "dead") && !game.spectateShown) {
+      game.spectateShown = true; // every call site passes a fresh clone
+      setSpectateNext(naturalNext);
+      return "spectate";
+    }
+    return naturalNext;
+  };
+
+  const spectateContinue = () => {
+    if (!state.game) return;
+    playSound("click");
+    const target = spectateNext ?? (state.game.winner ? "win" : "dayResults");
+    setSpectateNext(null);
+    setState((s) => ({ ...s, screen: target }));
+  };
 
   // ---- navigation ---------------------------------------------------------
 
@@ -148,6 +223,26 @@ export default function Landing() {
     setState((s) => ({ ...s, settings: next }));
 
   // ---- game lifecycle -----------------------------------------------------
+  // ── phase state machine ────────────────────────────────────────────────────
+  // state.screen   = the current phase (a typed union — never undefined)
+  // state.game.night = the current round
+  //
+  //   roleReveal ─► nightIntro ─► [night action screens] ─► (night resolved)
+  //        │ startNight()          startNight()  finishNight()
+  //        ▼
+  //   dayResults (بداية النهار — auto after night)  ── startDiscussion()
+  //        ▼
+  //   discussion (timer runs; AI chat in AI mode)   ── startVoting()
+  //        ▼
+  //   votingHandoff ─► castVote()/finishVoting() ─► voteResults
+  //        ▼
+  //   voteContinue()/noEliminate()/revote() ─► nightIntro (next round)
+  //        ▼
+  //   win  — after EVERY elimination checkWinCondition() decides, and if the
+  //          game keeps going the night→day→discussion→vote cycle repeats.
+  //   spectate — one-time notice when the human dies in AI mode; the same
+  //          cycle then continues automatically until someone wins.
+  // ───────────────────────────────────────────────────────────────────────────
 
   const startGame = (names: string[]) => {
     const prefs = state.settings.prefs;
@@ -160,6 +255,7 @@ export default function Landing() {
     const screen: ScreenName = state.settings.prefs.showInstructions
       ? "roleIntro"
       : "roleReveal";
+    setSpectateNext(null);
     setState((s) => ({ ...s, game, screen, pendingNames: null }));
     playSound("reveal");
   };
@@ -191,7 +287,8 @@ export default function Landing() {
     const step = currentNightStep(game);
     if (step === "done") {
       const res = finishNight(game);
-      setState((s) => ({ ...s, game, screen: res.screen }));
+      const target = routeResolved(game, res.screen);
+      setState((s) => ({ ...s, game, screen: target }));
       playSound(res.sound);
       return;
     }
@@ -229,7 +326,8 @@ export default function Landing() {
       return;
     }
     const res = finishNight(game);
-    setState((s) => ({ ...s, game, screen: res.screen }));
+    const target = routeResolved(game, res.screen);
+    setState((s) => ({ ...s, game, screen: target }));
     playSound(res.sound);
   };
 
@@ -237,11 +335,13 @@ export default function Landing() {
     if (!state.game) return;
     const game = structuredClone(state.game);
     const res = finishNight(game);
-    setState((s) => ({ ...s, game, screen: res.screen }));
+    const target = routeResolved(game, res.screen);
+    setState((s) => ({ ...s, game, screen: target }));
     playSound(res.sound);
   };
 
-  const dayContinue = () => {
+  /** Day results shown → enter the discussion phase (timer starts on mount). */
+  const startDiscussion = () => {
     if (!state.game) return;
     playSound("click");
     if (!isAiMode(state.game)) {
@@ -269,7 +369,8 @@ export default function Landing() {
       const human = humanPlayer(g.players);
       if (!human || human.status !== "alive") {
         const res = finalizeVotes(g);
-        setState((s) => ({ ...s, game: g, screen: res.winner ? "win" : "voteResults" }));
+        const target = routeResolved(g, res.winner ? "win" : "voteResults");
+        setState((s) => ({ ...s, game: g, screen: target }));
         playSound(res.winner ? "win" : res.kind === "eliminate" ? "eliminate" : "click");
         return;
       }
@@ -312,7 +413,8 @@ export default function Landing() {
       }
       game.votes.push({ voterId: human.id, targetId });
       const res = finalizeVotes(game);
-      setState((s) => ({ ...s, game, screen: res.winner ? "win" : "voteResults" }));
+      const target = routeResolved(game, res.winner ? "win" : "voteResults");
+      setState((s) => ({ ...s, game, screen: target }));
       playSound(res.winner ? "win" : res.kind === "eliminate" ? "eliminate" : "click");
       return;
     }
@@ -329,14 +431,10 @@ export default function Landing() {
     if (game.voteCursor >= voters.length) {
       const outcome = computeVoteOutcome(game.votes, game.settings.allowAbstain);
       const winner = applyVoteElimination(game, outcome);
-      if (winner) {
-        game.winner = winner;
-        setState((s) => ({ ...s, game, screen: "win" }));
-        playSound("win");
-        return;
-      }
-      setState((s) => ({ ...s, game, screen: "voteResults" }));
-      playSound(outcome.kind === "eliminate" ? "eliminate" : "click");
+      if (winner) game.winner = winner;
+      const target = routeResolved(game, winner ? "win" : "voteResults");
+      setState((s) => ({ ...s, game, screen: target }));
+      playSound(winner ? "win" : outcome.kind === "eliminate" ? "eliminate" : "click");
       return;
     }
     setState((s) => ({ ...s, game, screen: "votingHandoff" }));
@@ -360,7 +458,8 @@ export default function Landing() {
       const human = humanPlayer(game.players);
       if (!human || human.status !== "alive") {
         const res = finalizeVotes(game);
-        setState((s) => ({ ...s, game, screen: res.winner ? "win" : "voteResults" }));
+        const target = routeResolved(game, res.winner ? "win" : "voteResults");
+        setState((s) => ({ ...s, game, screen: target }));
         playSound(res.winner ? "win" : res.kind === "eliminate" ? "eliminate" : "click");
         return;
       }
@@ -505,7 +604,7 @@ export default function Landing() {
         );
       case "dayResults":
         return game ? (
-          <DayScreen game={game} onContinue={dayContinue} onExit={exitToMenu} onSave={saveNow} />
+          <DayScreen game={game} onContinue={startDiscussion} onExit={exitToMenu} onSave={saveNow} />
         ) : null;
       case "discussion":
         return game ? (
@@ -547,6 +646,15 @@ export default function Landing() {
           />
         ) : null;
       }
+      case "spectate":
+        return game ? (
+          <SpectateScreen
+            game={game}
+            onContinue={spectateContinue}
+            onExit={exitToMenu}
+            onSave={saveNow}
+          />
+        ) : null;
       case "voteResults":
         return game ? (
           <VoteResultsScreen

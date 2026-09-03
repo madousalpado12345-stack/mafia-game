@@ -26,7 +26,8 @@ export type ScreenName =
   | "discussion"
   | "votingHandoff"
   | "voteResults"
-  | "win";
+  | "win"
+  | "spectate";
 
 export interface Player {
   id: string;
@@ -139,6 +140,8 @@ export interface GameState {
   discussionScript: Utterance[];
   /** Guards against recording the same day's votes twice. */
   aiVotesRecorded: boolean;
+  /** Set once the human has seen the one-time "you are out" screen in AI mode. */
+  spectateShown?: boolean;
   night: number;
   revealCursor: number;
   nightActions: NightActions;

@@ -76,8 +76,10 @@ export function createAiStates(game: GameState): void {
         st.suspectScores[q.id] = 0;
         st.trustScores[q.id] = 90;
       } else {
-        st.suspectScores[q.id] = 28;
-        st.trustScores[q.id] = 26;
+        // Jittered starting opinions — every player is equally targetable and
+        // no AI systematically prefers the first player (or the human) on ties.
+        st.suspectScores[q.id] = 16 + Math.random() * 18;
+        st.trustScores[q.id] = 14 + Math.random() * 20;
       }
     }
     if (isMafiaRole(p)) {
@@ -130,10 +132,10 @@ export function applyAiNightActions(game: GameState): void {
               }
             }
           }
-          if (c.id === human?.id) score += 8; // humans are unpredictable
           return score;
         };
-        let target = candidates.reduce((best, c) => (scoreFor(c) > scoreFor(best) ? c : best), candidates[0]);
+        // The human is just another player — mafia does not know who is real.
+        let target = topBy(candidates, scoreFor, 8) ?? candidates[0];
         if (Math.random() < noiseP) {
           target = candidates[Math.floor(Math.random() * candidates.length)];
         }
@@ -154,16 +156,26 @@ export function applyAiNightActions(game: GameState): void {
           game.settings.doctorCanHealSelf ? true : q.id !== doc.id,
         );
         if (candidates.length > 0) {
-          const selfBias =
-            (persona.id === "quiet" || persona.id === "skeptic" ? 1.5 : 1) *
-            (10 + (st ? sc(st, st.suspectScores, doc.id, 0) * 0.12 : 0));
+          // The doctor mostly protects trusted townsfolk (likely night targets),
+          // and only protects itself when it feels personally threatened.
+          const accusationsOnSelf = st
+            ? st.accusations.filter((a) => a.accusedId === doc.id).length
+            : 0;
+          const caution =
+            persona.id === "quiet" || persona.id === "skeptic"
+              ? 1.6
+              : persona.id === "aggressive" || persona.id === "confident"
+                ? 0.55
+                : 1;
+          const selfBias = caution * (5 + accusationsOnSelf * 9 * factor);
           const scoreFor = (c: Player): number => {
             if (!st) return Math.random() * 20;
+            if (c.id === doc.id) return selfBias + Math.random() * 2;
             const trust = sc(st, st.trustScores, c.id, 26);
             const suspect = sc(st, st.suspectScores, c.id, 28);
-            return trust + (c.id === doc.id ? selfBias : 0) - suspect * 0.3 + Math.random() * 6;
+            return trust - suspect * 0.25;
           };
-          let target = candidates.reduce((best, c) => (scoreFor(c) > scoreFor(best) ? c : best), candidates[0]);
+          let target = topBy(candidates, scoreFor, 6) ?? candidates[0];
           if (Math.random() < noiseP) {
             target = candidates[Math.floor(Math.random() * candidates.length)];
           }
@@ -184,11 +196,9 @@ export function applyAiNightActions(game: GameState): void {
         if (candidates.length > 0) {
           const scoreFor = (c: Player): number => {
             if (!st) return Math.random() * 20;
-            return (
-              sc(st, st.suspectScores, c.id, 28) + (c.id === human?.id ? 5 : 0) + Math.random() * 5
-            );
+            return sc(st, st.suspectScores, c.id, 28);
           };
-          let target = candidates.reduce((best, c) => (scoreFor(c) > scoreFor(best) ? c : best), candidates[0]);
+          let target = topBy(candidates, scoreFor, 5) ?? candidates[0];
           if (Math.random() < noiseP) {
             target = candidates[Math.floor(Math.random() * candidates.length)];
           }
@@ -297,20 +307,31 @@ export function afterDayResolved(game: GameState): void {
   }
 }
 
+/** Picks the best item by score with a small random tie-break so equal scores
+ *  never deterministically resolve to the first item in the list. */
+function topBy<T>(items: T[], score: (item: T) => number, jitter = 4): T | null {
+  if (items.length === 0) return null;
+  let best = items[0];
+  let bestScore = -Infinity;
+  for (const item of items) {
+    const s = score(item) + Math.random() * jitter;
+    if (s > bestScore) {
+      bestScore = s;
+      best = item;
+    }
+  }
+  return best;
+}
+
 function topSuspect(st: AiState, players: Player[], selfId: string): Player | null {
   const alive = players.filter((p) => p.status === "alive" && p.id !== selfId);
-  if (alive.length === 0) return null;
-  return alive.reduce((best, p) => {
-    const s = sc(st, st.suspectScores, p.id, 28);
-    return s > sc(st, st.suspectScores, best.id, 28) ? p : best;
-  }, alive[0]);
+  return topBy(alive, (p) => sc(st, st.suspectScores, p.id, 28), 5);
 }
 
 /** Computes the vote of every alive AI player. never self, never dead, and
  *  (for mafia) never a teammate. */
 export function aiVotesFor(game: GameState, onlyAmong: string[] | null): VoteRecord[] {
   const states = aiStates(game);
-  const factor = difficultyFactor(game);
   const noiseP = noiseProbability(game);
   const votes: VoteRecord[] = [];
   const alive = game.players.filter((p) => p.status === "alive" && p.isAi);
@@ -330,15 +351,9 @@ export function aiVotesFor(game: GameState, onlyAmong: string[] | null): VoteRec
       // The jester wants attention on themselves: half the time it blends in
       // with the crowd, half the time it votes erratically (looks odd).
       const blend = Math.random() < 0.5;
-      let pick: Player;
-      if (blend) {
-        pick = topSuspect(st, candidates, p.id) ?? candidates[0];
-      } else {
-        pick = candidates.reduce((best, q) => {
-          const t = sc(st, st.trustScores, q.id, 26);
-          return t < sc(st, st.trustScores, best.id, 26) ? q : best;
-        }, candidates[0]);
-      }
+      const pick = blend
+        ? (topSuspect(st, candidates, p.id) ?? candidates[0])
+        : (topBy(candidates, (q) => 100 - sc(st, st.trustScores, q.id, 26), 6) ?? candidates[0]);
       votes.push({ voterId: p.id, targetId: pick.id });
       continue;
     }
@@ -349,20 +364,18 @@ export function aiVotesFor(game: GameState, onlyAmong: string[] | null): VoteRec
       continue;
     }
 
-    let best: Player = candidates[0];
-    let bestScore = -Infinity;
-    for (const q of candidates) {
-      const suspect = sc(st, st.suspectScores, q.id, 28);
-      const trust = sc(st, st.trustScores, q.id, 26);
-      let score = suspect * (1 + persona.boldness * 0.3) - trust * 0.1 + Math.random() * persona.noise * 30 * factor;
-      if (persona.id === "aggressive") score += 4;
-      if (q.id === humanPlayer(game.players)?.id) score += 3; // keep an eye on the wildcard
-      if (score > bestScore) {
-        bestScore = score;
-        best = q;
-      }
-    }
-    votes.push({ voterId: p.id, targetId: best.id });
+    const pick = topBy(
+      candidates,
+      (q) => {
+        const suspect = sc(st, st.suspectScores, q.id, 28);
+        const trust = sc(st, st.trustScores, q.id, 26);
+        let score = suspect * (1 + persona.boldness * 0.3) - trust * 0.1;
+        if (persona.id === "aggressive") score += 4;
+        return score;
+      },
+      10,
+    ) ?? candidates[0];
+    votes.push({ voterId: p.id, targetId: pick.id });
   }
   return votes;
 }
@@ -452,11 +465,7 @@ export function buildDiscussionScript(game: GameState): Utterance[] {
       const persona = personaById(st.personalityId);
       if (persona.id === "deceiver") {
         // frame the most trusted innocent
-        if (candidates.length === 0) return null;
-        return candidates.reduce((best, q) => {
-          const t = sc(st, st.trustScores, q.id, 26);
-          return t > sc(st, st.trustScores, best.id, 26) ? q : best;
-        }, candidates[0]);
+        return topBy(candidates, (q) => sc(st, st.trustScores, q.id, 26), 6);
       }
       if (candidates.length === 0) return null;
       return topSuspect(st, candidates, speaker.id);
@@ -493,12 +502,12 @@ export function buildDiscussionScript(game: GameState): Utterance[] {
 
     if (speaker.role === "jester") {
       // bait: act suspicious, prefer accusing someone trusted
-      let candidates = game.players.filter((q) => q.status === "alive" && q.id !== speaker.id);
-      const target =
-        candidates.reduce((best, q) => {
-          const t = sc(st, st.trustScores, q.id, 26);
-          return t > sc(st, st.trustScores, best.id, 26) ? q : best;
-        }, candidates[0] ?? null);
+      const candidates = game.players.filter((q) => q.status === "alive" && q.id !== speaker.id);
+      const target = topBy(
+        candidates,
+        (q) => (st ? sc(st, st.trustScores, q.id, 26) : 26),
+        8,
+      );
       say(speaker.id, fill(pick(persona.phrases.bait), { target: target ? name(target.id) : "الجميع" }));
       continue;
     }

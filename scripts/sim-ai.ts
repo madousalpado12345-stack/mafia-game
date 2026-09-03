@@ -57,10 +57,31 @@ function randomOf<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
+/** The simulated human votes for the most-suspected alive player. */
+function humanSmartVote(game: GameState): void {
+  const human = humanPlayer(game.players);
+  if (!human || human.status !== "alive") return;
+  const candidates = alivePlayers(game.players).filter((p) => p.id !== human.id);
+  if (candidates.length === 0) return;
+  const ais = alivePlayers(game.players).filter((p) => p.isAi && game.aiStates[p.id]);
+  const avgSuspicion = (id: string): number =>
+    ais.reduce((sum, p) => sum + (game.aiStates[p.id].suspectScores[id] ?? 28), 0) /
+    Math.max(1, ais.length);
+  const target = candidates.reduce(
+    (best, q) => (avgSuspicion(q.id) > avgSuspicion(best.id) ? q : best),
+    candidates[0],
+  );
+  game.votes.push({ voterId: human.id, targetId: target.id });
+}
+
 function simulateAiGame(count: number, difficulty: Difficulty): Winner {
   const names = ["أحمد", ...aiNamesFor(count - 1, ["أحمد"])];
   const game = createGame(names, RULES, "ai", difficulty);
+  return runAiGame(game, count, difficulty);
+}
 
+/** Plays an already-created AI game (night by night) until it ends. */
+function runAiGame(game: GameState, count: number, difficulty: Difficulty): Winner {
   while (!game.winner && game.night < 60) {
     // ---- night ----
     applyAiNightActions(game);
@@ -100,26 +121,7 @@ function simulateAiGame(count: number, difficulty: Difficulty): Winner {
     }
     game.votes = aiVotesFor(game, null);
     const human = humanPlayer(game.players);
-    if (human && human.status === "alive") {
-      // the human votes like a smart player: most-suspected alive player
-      const candidates = alivePlayers(game.players).filter((p) => p.id !== human.id);
-      if (candidates.length > 0) {
-        const target = candidates.reduce((best, q) => {
-          const avg =
-            alivePlayers(game.players)
-              .filter((p) => p.isAi && game.aiStates[p.id])
-              .reduce((sum, p) => sum + (game.aiStates[p.id].suspectScores[q.id] ?? 28), 0) /
-            Math.max(1, alivePlayers(game.players).filter((p) => p.isAi).length);
-          const bestAvg =
-            alivePlayers(game.players)
-              .filter((p) => p.isAi && game.aiStates[p.id])
-              .reduce((sum, p) => sum + (game.aiStates[p.id].suspectScores[best.id] ?? 28), 0) /
-            Math.max(1, alivePlayers(game.players).filter((p) => p.isAi).length);
-          return avg > bestAvg ? q : best;
-        }, candidates[0]);
-        game.votes.push({ voterId: human.id, targetId: target.id });
-      }
-    }
+    if (human && human.status === "alive") humanSmartVote(game);
     // AI votes are legal
     for (const v of game.votes) {
       const voter = game.players.find((p) => p.id === v.voterId)!;
@@ -178,6 +180,91 @@ function simulateAiGame(count: number, difficulty: Difficulty): Winner {
   assert(["citizens", "mafia", "jester"].includes(game.winner ?? ""), "valid winner kind");
   nightsTotal += game.night;
   return game.winner as Winner;
+}
+
+/** Plays exactly round 1 and reports how the human fared (fairness metric). */
+function firstRoundHumanStats(
+  count: number,
+  difficulty: Difficulty,
+): { mafiaTeam: boolean; aliveAfterNight: boolean; aliveAfterDay: boolean } {
+  const names = ["أحمد", ...aiNamesFor(count - 1, ["أحمد"])];
+  const game = createGame(names, RULES, "ai", difficulty);
+  const human = humanPlayer(game.players)!;
+  const mafiaTeam = ROLES[human.role].team === "mafia";
+
+  // night 1 (human acts if it holds a night role)
+  applyAiNightActions(game);
+  let step = currentNightStep(game);
+  if (step === "mafia") {
+    const candidates = alivePlayers(game.players).filter((p) => ROLES[p.role].team !== "mafia");
+    game.nightActions.mafiaTargetId = randomOf(candidates).id;
+    step = currentNightStep(game);
+  }
+  if (step === "doctor") {
+    game.nightActions.doctorSaveId = randomOf(alivePlayers(game.players)).id;
+    step = currentNightStep(game);
+  }
+  if (step === "detective") {
+    const det = alivePlayers(game.players).find((p) => p.role === "detective")!;
+    const target = randomOf(alivePlayers(game.players).filter((p) => p.id !== det.id));
+    game.nightActions.detectiveCheckId = target.id;
+    game.detectiveResult = { targetId: target.id, isMafia: ROLES[target.role].team === "mafia" };
+  }
+  resolveNight(game);
+  const aliveAfterNight = human.status === "alive";
+  if (game.winner) return { mafiaTeam, aliveAfterNight, aliveAfterDay: human.status === "alive" };
+
+  // day 1 discussion + vote
+  buildDiscussionScript(game);
+  game.votes = aiVotesFor(game, null);
+  if (human.status === "alive") humanSmartVote(game);
+  const outcome = computeVoteOutcome(game.votes, game.settings.allowAbstain);
+  applyVoteElimination(game, outcome);
+  return { mafiaTeam, aliveAfterNight, aliveAfterDay: human.status === "alive" };
+}
+
+/** The game must keep running to the end when the human dies at night. */
+function checkHumanOutAtNightContinues(): void {
+  let tested = 0;
+  while (tested < 30) {
+    const names = ["أحمد", ...aiNamesFor(7, ["أحمد"])];
+    const game = createGame(names, RULES, "ai", "medium");
+    const human = humanPlayer(game.players)!;
+    if (ROLES[human.role].team === "mafia") continue; // mafia can't be night-killed
+    applyAiNightActions(game);
+    game.nightActions.mafiaTargetId = human.id; // force the night kill on the human
+    game.nightActions.doctorSaveId = null; // prevent a save from blocking the test
+    resolveNight(game);
+    assert(human.status === "dead", "human is forced out at night");
+    if (game.winner) continue;
+    startNextNight(game);
+    const winner = runAiGame(game, 8, "medium");
+    assert(!!winner, "game reaches a winner after the human died at night");
+    tested += 1;
+  }
+}
+
+/** The game must keep running to the end when the human is voted out. */
+function checkHumanOutByVoteContinues(): void {
+  let tested = 0;
+  while (tested < 30) {
+    const names = ["أحمد", ...aiNamesFor(7, ["أحمد"])];
+    const game = createGame(names, RULES, "ai", "medium");
+    const human = humanPlayer(game.players)!;
+    if (human.role === "jester") continue; // jester voted out ends the game by design
+    const voters = alivePlayers(game.players).filter((p) => p.id !== human.id);
+    game.votes = voters.map((v) => ({ voterId: v.id, targetId: human.id }));
+    const outcome = computeVoteOutcome(game.votes, game.settings.allowAbstain);
+    const winner = applyVoteElimination(game, outcome);
+    assert(human.status === "dead", "human is forced out by vote");
+    if (winner) continue;
+    recordVotes(game);
+    afterDayResolved(game);
+    startNextNight(game);
+    const winner2 = runAiGame(game, 8, "medium");
+    assert(!!winner2, "game reaches a winner after the human was voted out");
+    tested += 1;
+  }
 }
 
 function simulateFriendsGame(count: number): Winner {
@@ -308,6 +395,34 @@ console.log("  ✓ اكتمل");
 console.log("\nالتحقق من فوز المهرج:");
 checkJesterWin();
 console.log("  ✓ اكتمل");
+
+console.log("\nعدالة استهداف اللاعب الحقيقي (الجولة الأولى):");
+let humanAliveAfterNight = 0;
+let humanAliveAfterDay = 0;
+let humanFairGames = 0;
+for (const count of [6, 8, 12, 16]) {
+  for (const difficulty of DIFFICULTIES) {
+    for (let i = 0; i < 60; i++) {
+      const s = firstRoundHumanStats(count, difficulty);
+      humanFairGames += 1;
+      if (s.aliveAfterNight) humanAliveAfterNight += 1;
+      if (s.aliveAfterDay) humanAliveAfterDay += 1;
+    }
+  }
+}
+const pct = (n: number) => `${((n / Math.max(1, humanFairGames)) * 100).toFixed(0)}%`;
+console.log(`  نجا من الليلة الأولى: ${pct(humanAliveAfterNight)}`);
+console.log(`  نجا حتى نهاية اليوم الأول: ${pct(humanAliveAfterDay)}`);
+assert(
+  humanAliveAfterDay / Math.max(1, humanFairGames) > 0.5,
+  "human survives round 1 in the majority of games (not systematically eliminated)",
+);
+console.log("  ✓ اللاعب الحقيقي لا يُستهدف بشكل منهجي في الجولة الأولى");
+
+console.log("\nاستمرار المباراة بعد خروج اللاعب الحقيقي:");
+checkHumanOutAtNightContinues();
+checkHumanOutByVoteContinues();
+console.log("  ✓ المباراة تكمل الليل والنهار والتصويت حتى النهاية (مشاهدة)");
 
 // ---- sample discussion for eyeballing quality ------------------------------
 {

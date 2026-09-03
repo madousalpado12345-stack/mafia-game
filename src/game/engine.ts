@@ -41,6 +41,7 @@ export function createGame(
     aiStates: {},
     discussionScript: [],
     aiVotesRecorded: false,
+    spectateShown: false,
     night: 1,
     revealCursor: 0,
     nightActions: { mafiaTargetId: null, doctorSaveId: null, detectiveCheckId: null },

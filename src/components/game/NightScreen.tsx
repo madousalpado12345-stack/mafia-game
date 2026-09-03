@@ -26,7 +26,15 @@ function StepDots({ current, total }: { current: number; total: number }) {
   );
 }
 
-function NightIntro({ game, onStartNight }: { game: GameState; onStartNight: () => void }) {
+function NightIntro({
+  game,
+  aiMode,
+  onStartNight,
+}: {
+  game: GameState;
+  aiMode?: boolean;
+  onStartNight: () => void;
+}) {
   const steps = nightSequence(game);
   return (
     <ScreenShell>
@@ -54,7 +62,10 @@ function NightIntro({ game, onStartNight }: { game: GameState; onStartNight: () 
                 <p className="mt-1 text-xs font-bold" style={{ color: r.color }}>
                   {r.name}
                 </p>
-                <p className="text-[10px] text-muted-foreground">{actor?.name ?? "—"}</p>
+                {/* In AI mode the role holders stay secret — never show names. */}
+                <p className="text-[10px] text-muted-foreground">
+                  {aiMode ? "؟" : (actor?.name ?? "—")}
+                </p>
               </div>
             );
           })}
@@ -254,7 +265,7 @@ export default function NightScreen({
   onSave: () => void;
 }) {
   if (step === "intro") {
-    return <NightIntro game={game} onStartNight={onStartNight} />;
+    return <NightIntro game={game} aiMode={aiMode} onStartNight={onStartNight} />;
   }
   const sequence = nightSequence(game);
   const stepIndex = sequence.indexOf(step);
