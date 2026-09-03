@@ -544,18 +544,23 @@ export function buildDiscussionScript(game: GameState): Utterance[] {
     recordDefense(acc.accuserId, accused.id);
   }
 
-  // 4) vote-analysis round (if there are votes to analyze)
-  if (utts.length < 40 && game.votes.length > 0) {
+  // 4) vote-analysis round — each analyst speaks from the votes it REMEMBERS.
+  //    game.votes belongs to the current round and is empty during discussion;
+  //    the AI's voteHistory memory accumulates every public vote of the
+  //    previous rounds, so this fires from round 2 onward, never in round 1.
+  if (utts.length < 40) {
     const analysts = alive.filter((p) => {
       const persona = personaById(states[p.id]?.personalityId ?? "smart");
       return ["smart", "analyst", "skeptic"].includes(persona.id);
     });
     const speaking = shuffle(analysts).slice(0, Math.min(2, analysts.length));
-    const realVotes = game.votes.filter((v) => v.targetId);
     for (const s of speaking) {
-      if (realVotes.length === 0) break;
-      const vote = realVotes[Math.floor(Math.random() * realVotes.length)];
-      const persona = personaById(states[s.id]?.personalityId ?? "smart");
+      const st = states[s.id];
+      // Public votes — every player saw them, so quoting them never cheats.
+      const remembered = (st?.voteHistory ?? []).filter((v) => v.targetId);
+      if (remembered.length === 0) continue;
+      const vote = remembered[Math.floor(Math.random() * remembered.length)];
+      const persona = personaById(st?.personalityId ?? "smart");
       say(
         s.id,
         fill(pick(persona.phrases.analyze), {

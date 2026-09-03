@@ -398,6 +398,68 @@ function checkRoleKnowledge(): void {
   }
 }
 
+// ---- discussion analyzes remembered votes (from round 2 onward) -------------
+function checkDiscussionMemory(): void {
+  let verified = 0;
+  let attempts = 0;
+  while (verified < 5 && attempts < 200) {
+    attempts += 1;
+    const names = ["أحمد", ...aiNamesFor(7, ["أحمد"])];
+    const game = createGame(names, RULES, "ai", "medium");
+    // round 1: full night + day vote so voteHistory is populated
+    applyAiNightActions(game);
+    let step = currentNightStep(game);
+    if (step === "mafia") {
+      const candidates = alivePlayers(game.players).filter((p) => ROLES[p.role].team !== "mafia");
+      game.nightActions.mafiaTargetId = randomOf(candidates).id;
+      step = currentNightStep(game);
+    }
+    if (step === "doctor") game.nightActions.doctorSaveId = randomOf(alivePlayers(game.players)).id;
+    if (step === "detective") {
+      const det = alivePlayers(game.players).find((p) => p.role === "detective")!;
+      const target = randomOf(alivePlayers(game.players).filter((p) => p.id !== det.id));
+      game.nightActions.detectiveCheckId = target.id;
+      game.detectiveResult = { targetId: target.id, isMafia: ROLES[target.role].team === "mafia" };
+    }
+    resolveNight(game);
+    afterNightResolved(game);
+    if (game.winner) continue;
+    game.votes = aiVotesFor(game, null);
+    const human = humanPlayer(game.players);
+    if (human && human.status === "alive") humanSmartVote(game);
+    const outcome = computeVoteOutcome(game.votes, game.settings.allowAbstain);
+    const w = applyVoteElimination(game, outcome);
+    recordVotes(game);
+    afterDayResolved(game);
+    if (w) continue;
+    startNextNight(game);
+    // round 2: night then discussion — analysts must speak from memory
+    applyAiNightActions(game);
+    step = currentNightStep(game);
+    if (step === "mafia") {
+      const candidates = alivePlayers(game.players).filter((p) => ROLES[p.role].team !== "mafia");
+      game.nightActions.mafiaTargetId = randomOf(candidates).id;
+      step = currentNightStep(game);
+    }
+    if (step === "doctor") game.nightActions.doctorSaveId = randomOf(alivePlayers(game.players)).id;
+    if (step === "detective") {
+      const det = alivePlayers(game.players).find((p) => p.role === "detective")!;
+      const target = randomOf(alivePlayers(game.players).filter((p) => p.id !== det.id));
+      game.nightActions.detectiveCheckId = target.id;
+      game.detectiveResult = { targetId: target.id, isMafia: ROLES[target.role].team === "mafia" };
+    }
+    const w2 = resolveNight(game);
+    afterNightResolved(game);
+    if (w2) continue;
+    const script = buildDiscussionScript(game);
+    const analyze = script.filter((u) =>
+      /صوّت .+ ضد/.test(u.text) || /غيّر رأيه/.test(u.text) || /تغيّر الأصوات|تغيير الأصوات/.test(u.text),
+    );
+    if (analyze.length > 0) verified += 1;
+  }
+  assert(verified >= 5, "discussion quotes remembered votes from round 2 onward");
+}
+
 // ---- jester win fires when voted out ---------------------------------------
 function checkJesterWin(): void {
   const names = ["أحمد", ...aiNamesFor(5, ["أحمد"])];
@@ -449,6 +511,10 @@ console.log("  ✓ اكتمل");
 console.log("\nالتحقق من فوز المهرج:");
 checkJesterWin();
 console.log("  ✓ اكتمل");
+
+console.log("\nتحليل النقاش للتصويتات السابقة (الذاكرة):");
+checkDiscussionMemory();
+console.log("  ✓ النقاش يذكر التصويتات السابقة من الجولة الثانية فصاعدًا");
 
 console.log("\nعدالة استهداف اللاعب الحقيقي (الجولة الأولى):");
 let humanAliveAfterNight = 0;
