@@ -34,13 +34,15 @@ export default function AiDiscussionScreen({
   const timerFiredRef = useRef(false);
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
+  const onTickRef = useRef(onTick);
+  onTickRef.current = onTick;
 
   // Single countdown interval — cleaned up on pause, unmount and transitions.
   useEffect(() => {
     if (secondsLeft <= 0) return;
-    const iv = setInterval(onTick, 1000);
+    const iv = setInterval(() => onTickRef.current(), 1000);
     return () => clearInterval(iv);
-  }, [secondsLeft, onTick]);
+  }, [secondsLeft]);
 
   // At 00:00 the discussion ends and voting begins automatically.
   useEffect(() => {

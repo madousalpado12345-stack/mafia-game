@@ -8,7 +8,7 @@ import { ROLES } from "@/game/roles";
 import type { GameState, NightStep } from "@/game/types";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { GameTopBar, PassPhone, PrimaryButton, ScreenShell, SelectableList, type SelectItem } from "./ui";
+import { GameTopBar, PassPhone, PrimaryButton, ScreenShell, SelectableList, useAutoAdvance, type SelectItem } from "./ui";
 
 function StepDots({ current, total }: { current: number; total: number }) {
   return (
@@ -29,13 +29,18 @@ function StepDots({ current, total }: { current: number; total: number }) {
 function NightIntro({
   game,
   aiMode,
+  spectator,
   onStartNight,
 }: {
   game: GameState;
   aiMode?: boolean;
+  /** AI mode with the human out — the night starts itself. */
+  spectator?: boolean;
   onStartNight: () => void;
 }) {
   const steps = nightSequence(game);
+  // Spectators: let the AI night play out without waiting for a tap.
+  useAutoAdvance(spectator, onStartNight, 2200);
   return (
     <ScreenShell>
       <div className="flex-1" />
@@ -249,6 +254,7 @@ export default function NightScreen({
   game,
   step,
   aiMode,
+  spectator,
   onStartNight,
   onChoose,
   onDetectiveHide,
@@ -258,6 +264,7 @@ export default function NightScreen({
   game: GameState;
   step: NightStep | "intro";
   aiMode?: boolean;
+  spectator?: boolean;
   onStartNight: () => void;
   onChoose: (targetId: string) => void;
   onDetectiveHide: () => void;
@@ -265,7 +272,7 @@ export default function NightScreen({
   onSave: () => void;
 }) {
   if (step === "intro") {
-    return <NightIntro game={game} aiMode={aiMode} onStartNight={onStartNight} />;
+    return <NightIntro game={game} aiMode={aiMode} spectator={spectator} onStartNight={onStartNight} />;
   }
   const sequence = nightSequence(game);
   const stepIndex = sequence.indexOf(step);

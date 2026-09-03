@@ -33,12 +33,19 @@ export default function DiscussionScreen({
   const secondsLeft = timer.remaining;
   const total = Math.max(1, timer.duration);
 
+  // Keep the latest callbacks in refs so the interval below always ticks the
+  // CURRENT game state and is never rebuilt from a stale closure.
+  const onTickRef = useRef(onTick);
+  onTickRef.current = onTick;
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
+
   // Single interval — cleaned up on pause, unmount and every transition.
   useEffect(() => {
     if (!running || secondsLeft <= 0) return;
-    const iv = setInterval(onTick, 1000);
+    const iv = setInterval(() => onTickRef.current(), 1000);
     return () => clearInterval(iv);
-  }, [running, secondsLeft, onTick]);
+  }, [running, secondsLeft]);
 
   // At 00:00 → stop, then move to voting automatically.
   useEffect(() => {
@@ -53,10 +60,10 @@ export default function DiscussionScreen({
     if (!ended) return;
     const t = setTimeout(() => {
       playSound("click");
-      onDone();
+      onDoneRef.current();
     }, 900);
     return () => clearTimeout(t);
-  }, [ended, onDone]);
+  }, [ended]);
 
   const pickDuration = (m: number) => {
     playSound("click");

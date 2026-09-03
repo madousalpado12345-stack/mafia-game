@@ -12,7 +12,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 
 export function ScreenShell({
   children,
@@ -275,4 +275,18 @@ export function formatTime(totalSeconds: number): string {
   const m = Math.floor(totalSeconds / 60);
   const s = totalSeconds % 60;
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+/** Fires a callback once, after a delay, while `active` is true. Used to keep
+ *  AI-mode games moving on their own when the human is a spectator. */
+export function useAutoAdvance(active: boolean | undefined, cb: () => void, delay = 2400) {
+  const cbRef = useRef(cb);
+  cbRef.current = cb;
+  const firedRef = useRef(false);
+  useEffect(() => {
+    if (!active || firedRef.current) return;
+    firedRef.current = true;
+    const t = setTimeout(() => cbRef.current(), delay);
+    return () => clearTimeout(t);
+  }, [active, delay]);
 }

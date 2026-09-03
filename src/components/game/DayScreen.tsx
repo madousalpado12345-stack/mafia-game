@@ -1,7 +1,7 @@
 import { alivePlayers, deadPlayers, playerById } from "@/game/engine";
 import { ROLES } from "@/game/roles";
 import type { GameState } from "@/game/types";
-import { GameTopBar, PlayerStatusRow, PrimaryButton, ScreenShell, SectionTitle } from "./ui";
+import { GameTopBar, PlayerStatusRow, PrimaryButton, ScreenShell, SectionTitle, useAutoAdvance } from "./ui";
 
 function LogList({ game }: { game: GameState }) {
   return (
@@ -29,15 +29,21 @@ function LogList({ game }: { game: GameState }) {
 
 export default function DayScreen({
   game,
+  spectator,
   onContinue,
   onExit,
   onSave,
 }: {
   game: GameState;
+  /** AI mode with the human out — the game advances on its own. */
+  spectator?: boolean;
   onContinue: () => void;
   onExit: () => void;
   onSave: () => void;
 }) {
+  // Spectators see the night result briefly, then discussion starts itself.
+  useAutoAdvance(spectator, onContinue, 2600);
+
   const eliminatedId = game.nightEliminatedId;
   const eliminated = eliminatedId ? playerById(game.players, eliminatedId) : null;
   const reveal = game.settings.revealRoleOnElimination;

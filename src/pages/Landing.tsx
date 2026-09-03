@@ -340,32 +340,39 @@ export default function Landing() {
     playSound(res.sound);
   };
 
-  /** Day results shown → enter the discussion phase and start its countdown.
-   *  The timer is created here, stored in game state and cleared when voting
-   *  starts — one timer per discussion, never two at once. */
+  /** Day results → discussion. THE single transition out of the day screen:
+   *  creates the countdown in game state and flips the screen to "discussion"
+   *  in the same update. Guarded so it can never fire twice for one phase. */
   const startDiscussion = () => {
     if (!state.game) return;
     playSound("click");
     const game = structuredClone(state.game);
     const minutes = Math.max(1, Math.round(game.settings.discussionMinutes || 2));
     game.discussionTimer = { duration: minutes * 60, remaining: minutes * 60 };
+    const commit = (s: AppState): AppState => {
+      // Only move from the day screen — a second call is ignored, never stacked.
+      if (s.screen !== "dayResults") return s;
+      return { ...s, game, screen: "discussion" };
+    };
     if (isAiMode(game)) {
       const aiAlive = game.players.filter((p) => p.isAi && p.status === "alive").length;
       game.discussionScript = aiAlive > 0 ? buildDiscussionScript(game) : [];
-      setState((s) => ({ ...s, game }));
+      setState(commit);
       if (aiAlive === 0) beginVoting(game);
       return;
     }
-    setState((s) => ({ ...s, game }));
+    setState(commit);
   };
 
-  /** One-second tick of the discussion countdown — persisted in game state. */
+  /** One-second tick of the discussion countdown — persisted in game state.
+   *  Safe even if the timer was missing (old saves): it is re-created from the
+   *  configured duration instead of freezing on a stale value. */
   const tickDiscussionTimer = () => {
     setState((s) => {
-      if (!s.game?.discussionTimer || s.screen !== "discussion") return s;
+      if (!s.game || s.screen !== "discussion") return s;
       const game = structuredClone(s.game);
-      const timer = game.discussionTimer;
-      if (!timer) return s;
+      const minutes = Math.max(1, Math.round(game.settings.discussionMinutes || 2));
+      const timer = game.discussionTimer ?? { duration: minutes * 60, remaining: minutes * 60 };
       const remaining = Math.max(0, timer.remaining - 1);
       game.discussionTimer = { duration: timer.duration, remaining };
       return { ...s, game };
@@ -559,6 +566,9 @@ export default function Landing() {
   const game = state.game;
   const voters = game ? alivePlayers(game.players) : [];
   const voter = game ? voters[game.voteCursor] : undefined;
+  const humanAlive = game ? (humanPlayer(game.players)?.status ?? "dead") === "alive" : false;
+  // AI mode + human out → the match keeps running on its own (spectator).
+  const spectator = !!game && isAiMode(game) && !humanAlive;
 
   const renderScreen = () => {
     switch (state.screen) {
@@ -615,6 +625,7 @@ export default function Landing() {
           <NightScreen
             game={game}
             aiMode={isAiMode(game)}
+            spectator={spectator}
             step={
               state.screen === "nightIntro"
                 ? "intro"
@@ -633,7 +644,13 @@ export default function Landing() {
         );
       case "dayResults":
         return game ? (
-          <DayScreen game={game} onContinue={startDiscussion} onExit={exitToMenu} onSave={saveNow} />
+          <DayScreen
+            game={game}
+            spectator={spectator}
+            onContinue={startDiscussion}
+            onExit={exitToMenu}
+            onSave={saveNow}
+          />
         ) : null;
       case "discussion": {
         if (!game) return null;
@@ -698,6 +715,7 @@ export default function Landing() {
         return game ? (
           <VoteResultsScreen
             game={game}
+            spectator={spectator}
             canRevote={game.settings.tieRevote}
             onRevote={revote}
             onNoEliminate={noEliminate}

@@ -38,6 +38,27 @@ export type ScreenName =
   | "win"
   | "spectate";
 
+/** Every valid screen name (runtime list — used to reject corrupt saves). */
+export const SCREEN_NAMES: readonly ScreenName[] = [
+  "menu",
+  "setup",
+  "names",
+  "howTo",
+  "settings",
+  "roleIntro",
+  "roleReveal",
+  "nightIntro",
+  "nightMafia",
+  "nightDoctor",
+  "nightDetective",
+  "dayResults",
+  "discussion",
+  "votingHandoff",
+  "voteResults",
+  "win",
+  "spectate",
+];
+
 export interface Player {
   id: string;
   name: string;

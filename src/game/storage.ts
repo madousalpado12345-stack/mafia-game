@@ -1,3 +1,4 @@
+import { SCREEN_NAMES } from "./types";
 import type { AppState, Settings } from "./types";
 
 const SAVE_KEY = "mafia-app-state-v1";
@@ -59,6 +60,9 @@ function isValidAppState(data: unknown): data is AppState {
   if (!data || typeof data !== "object") return false;
   const d = data as Partial<AppState>;
   if (typeof d.screen !== "string") return false;
+  // A phase can never be an unknown value — reject corrupt/legacy screens so
+  // the game state machine always starts from a valid screen.
+  if (!(SCREEN_NAMES as readonly string[]).includes(d.screen)) return false;
   if (!d.settings || typeof d.settings !== "object") return false;
   if (!d.settings.rules || typeof d.settings.rules !== "object") return false;
   if (!d.settings.prefs || typeof d.settings.prefs !== "object") return false;

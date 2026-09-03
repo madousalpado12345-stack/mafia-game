@@ -2,10 +2,18 @@ import { nameOf, playerById } from "@/game/engine";
 import { ROLES } from "@/game/roles";
 import type { GameState } from "@/game/types";
 import { cn } from "@/lib/utils";
-import { GameTopBar, GhostButton, PrimaryButton, ScreenShell, formatVotes } from "./ui";
+import {
+  GameTopBar,
+  GhostButton,
+  PrimaryButton,
+  ScreenShell,
+  formatVotes,
+  useAutoAdvance,
+} from "./ui";
 
 export default function VoteResultsScreen({
   game,
+  spectator,
   canRevote,
   onRevote,
   onNoEliminate,
@@ -14,6 +22,8 @@ export default function VoteResultsScreen({
   onSave,
 }: {
   game: GameState;
+  /** AI mode with the human out — ties/votes resolve on their own. */
+  spectator?: boolean;
   canRevote: boolean;
   onRevote: () => void;
   onNoEliminate: () => void;
@@ -23,6 +33,17 @@ export default function VoteResultsScreen({
 }) {
   const outcome = game.lastVoteOutcome;
   const isTie = outcome?.kind === "tie";
+
+  // Spectators: show the tally briefly, then keep the match moving — a tie
+  // re-votes if allowed, otherwise no one is eliminated.
+  useAutoAdvance(spectator, () => {
+    if (outcome?.kind === "tie") {
+      if (canRevote) onRevote();
+      else onNoEliminate();
+    } else {
+      onContinue();
+    }
+  }, 2800);
 
   const tallyCard = (
     <div className="rounded-2xl border border-white/10 bg-card/70 p-4">
