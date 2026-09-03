@@ -31,6 +31,22 @@ export function saveAppState(state: AppState) {
   }
 }
 
+/** Merges a (possibly stale / partial) saved settings object over the current
+ *  defaults so every preference and rule key always exists. Old saves from
+ *  before a feature existed (e.g. difficulty, jesterEnabled) get safe defaults. */
+export function normalizeSettings(raw: unknown): Settings {
+  const base = { prefs: {}, rules: {} } as Settings;
+  if (raw && typeof raw === "object") {
+    const r = raw as Partial<Settings>;
+    if (r.prefs && typeof r.prefs === "object") base.prefs = r.prefs;
+    if (r.rules && typeof r.rules === "object") base.rules = r.rules;
+  }
+  return {
+    prefs: { ...DEFAULT_SETTINGS.prefs, ...base.prefs },
+    rules: { ...DEFAULT_SETTINGS.rules, ...base.rules },
+  };
+}
+
 export function clearAppState() {
   try {
     localStorage.removeItem(SAVE_KEY);
@@ -60,7 +76,10 @@ export function loadAppState(): AppState | null {
     if (!raw) return null;
     const data: unknown = JSON.parse(raw);
     if (!isValidAppState(data)) return null;
-    return data;
+    const d = data as AppState;
+    // Root-cause fix: rehydrate settings over defaults so keys added in later
+    // versions (playMode, difficulty, jesterEnabled, ...) are never undefined.
+    return { ...d, settings: normalizeSettings(d.settings) };
   } catch {
     return null;
   }

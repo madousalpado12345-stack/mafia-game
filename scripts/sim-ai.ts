@@ -25,6 +25,8 @@ import {
 } from "../src/game/engine";
 import { aiNamesFor } from "../src/game/personas";
 import { ROLES } from "../src/game/roles";
+import { difficultyMeta, safeDifficulty } from "../src/game/ai";
+import { normalizeSettings } from "../src/game/storage";
 import type { Difficulty, GameSettings, GameState, Winner } from "../src/game/types";
 
 const RULES: GameSettings = {
@@ -216,6 +218,28 @@ function simulateFriendsGame(count: number): Winner {
   return game.winner as Winner;
 }
 
+// ---- stale/legacy settings regression (the 'hint' crash) --------------------
+function checkLegacySettings(): void {
+  // Simulates an app state saved BEFORE AI mode existed (no playMode/difficulty)
+  const legacy = normalizeSettings({
+    prefs: { soundOn: false, playerCount: 8 },
+    rules: { tieRevote: false },
+  });
+  assert(legacy.prefs.difficulty === "medium", "missing difficulty defaults to medium");
+  assert(legacy.prefs.playMode === "friends", "missing playMode defaults to friends");
+  assert(legacy.prefs.soundOn === false, "existing prefs are preserved");
+  assert(legacy.prefs.playerCount === 8, "existing playerCount is preserved");
+  assert(legacy.rules.jesterEnabled === true, "missing rule defaults are filled");
+  assert(legacy.rules.tieRevote === false, "existing rules are preserved");
+
+  // The exact expression that crashed SetupScreen must never throw:
+  const hint = difficultyMeta(undefined).hint;
+  assert(typeof hint === "string" && hint.length > 0, "difficulty hint is always a string");
+  assert(safeDifficulty("bogus") === "medium", "invalid difficulty falls back to medium");
+  assert(safeDifficulty("hard") === "hard", "valid difficulty is kept");
+  assert(difficultyMeta(null as unknown as string).hint.length > 0, "null difficulty is safe");
+}
+
 // ---- role-knowledge checks (no cheating) -----------------------------------
 function checkRoleKnowledge(): void {
   const names = ["أحمد", ...aiNamesFor(9, ["أحمد"])];
@@ -272,6 +296,10 @@ console.log(
   `  فوز المواطنين: ${aiWins.citizens} · فوز المافيا: ${aiWins.mafia} · فوز المهرج: ${aiWins.jester}`,
 );
 console.log(`  متوسط عدد الليالي: ${(nightsTotal / Math.max(1, aiGames)).toFixed(1)}`);
+
+console.log("\nالتحقق من الإعدادات القديمة (خطأ hint):");
+checkLegacySettings();
+console.log("  ✓ اكتمل");
 
 console.log("\nالتحقق من معرفة الأدوار (لا غش):");
 checkRoleKnowledge();

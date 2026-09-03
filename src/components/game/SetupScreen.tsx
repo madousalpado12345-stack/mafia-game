@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { DIFFICULTY_META } from "@/game/ai";
+import { DIFFICULTY_META, difficultyMeta, safeDifficulty } from "@/game/ai";
 import { ROLES } from "@/game/roles";
 import type { Difficulty, RoleId, Settings } from "@/game/types";
 import type { ReactNode } from "react";
@@ -247,7 +247,7 @@ export default function SetupScreen({
               return (
                 <Chip
                   key={d}
-                  selected={settings.prefs.difficulty === d}
+                  selected={safeDifficulty(settings.prefs.difficulty) === d}
                   onClick={() => onChange({ ...settings, prefs: { ...settings.prefs, difficulty: d } })}
                 >
                   {meta.emoji} {meta.label}
@@ -256,7 +256,7 @@ export default function SetupScreen({
             })}
           </div>
           <p className="text-center text-xs text-muted-foreground">
-            {DIFFICULTY_META[settings.prefs.difficulty].hint}
+            {difficultyMeta(settings.prefs.difficulty).hint ?? ""}
           </p>
         </div>
       )}

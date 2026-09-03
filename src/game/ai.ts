@@ -581,3 +581,15 @@ export const DIFFICULTY_META: Record<Difficulty, { label: string; emoji: string;
   medium: { label: "متوسط", emoji: "🟡", hint: "يحلل الأصوات والنقاشات ويرتكب بعض الأخطاء" },
   hard: { label: "صعب", emoji: "🔴", hint: "يحلل السلوك والأحداث ويكتشف التناقضات بمهارة" },
 };
+
+/** Returns a valid difficulty key for any (possibly missing/corrupt) value. */
+export function safeDifficulty(d: Difficulty | string | null | undefined): Difficulty {
+  return d === "easy" || d === "medium" || d === "hard" ? d : "medium";
+}
+
+/** Always-valid difficulty metadata — never undefined, never crashes. */
+export function difficultyMeta(
+  d: Difficulty | string | null | undefined,
+): { label: string; emoji: string; hint: string } {
+  return DIFFICULTY_META[safeDifficulty(d)];
+}

@@ -21,6 +21,7 @@ import {
   humanPlayer,
   isAiMode,
   recordVotes,
+  safeDifficulty,
 } from "@/game/ai";
 import {
   alivePlayers,
@@ -153,8 +154,8 @@ export default function Landing() {
     const game = createGame(
       names,
       state.settings.rules,
-      prefs.playMode ?? "friends",
-      prefs.difficulty ?? "medium",
+      prefs.playMode === "ai" ? "ai" : "friends",
+      safeDifficulty(prefs.difficulty),
     );
     const screen: ScreenName = state.settings.prefs.showInstructions
       ? "roleIntro"
