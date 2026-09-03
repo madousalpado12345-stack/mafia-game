@@ -195,6 +195,8 @@ export function applyVoteElimination(state: GameState, outcome: VoteOutcome): Wi
       phase: "day",
       text: `خرج ${p.name} من اللعبة بالتصويت${reveal}`,
     });
+    // المهرج يفوز وحده إذا أُخرج بالتصويت النهاري.
+    if (p.role === "jester") return "jester";
   } else if (outcome.kind === "tie") {
     state.log.push({
       id: uid("l"),

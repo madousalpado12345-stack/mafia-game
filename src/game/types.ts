@@ -1,8 +1,8 @@
 /** Core shared types for the Mafia game. */
 
-export type RoleId = "mafia" | "citizen" | "detective" | "doctor";
+export type RoleId = "mafia" | "citizen" | "detective" | "doctor" | "jester";
 
-export type Winner = "citizens" | "mafia";
+export type Winner = "citizens" | "mafia" | "jester";
 
 export type NightStep = "mafia" | "doctor" | "detective";
 
@@ -71,6 +71,7 @@ export interface GameSettings {
   tieRevote: boolean;
   detectiveEnabled: boolean;
   doctorEnabled: boolean;
+  jesterEnabled: boolean;
 }
 
 /** UI / device preferences. */

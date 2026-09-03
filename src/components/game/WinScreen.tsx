@@ -14,27 +14,42 @@ export default function WinScreen({
   onNewSetup: () => void;
   onMenu: () => void;
 }) {
+  const jesterWin = game.winner === "jester";
   const mafiaWin = game.winner === "mafia";
   const alive = alivePlayers(game.players);
 
   return (
     <ScreenShell>
       <div className="text-center">
-        <div className={mafiaWin ? "animate-pulse-red text-8xl" : "animate-float text-8xl"}>
-          {mafiaWin ? "🔪" : "🏆"}
+        <div
+          className={
+            jesterWin
+              ? "animate-float text-8xl"
+              : mafiaWin
+                ? "animate-pulse-red text-8xl"
+                : "animate-float text-8xl"
+          }
+        >
+          {jesterWin ? "🎭" : mafiaWin ? "🔪" : "🏆"}
         </div>
         <p className="mt-4 text-sm font-extrabold text-muted-foreground">انتهت اللعبة</p>
         <h1
           className={`mt-2 text-4xl font-black leading-tight ${
-            mafiaWin ? "text-glow text-red-400" : "text-glow-gold text-accent"
+            jesterWin
+              ? "text-glow text-purple-400"
+              : mafiaWin
+                ? "text-glow text-red-400"
+                : "text-glow-gold text-accent"
           }`}
         >
-          {mafiaWin ? "فازت المافيا!" : "فاز المواطنون!"}
+          {jesterWin ? "فاز المهرج!" : mafiaWin ? "فازت المافيا!" : "فاز المواطنون!"}
         </h1>
         <p className="mx-auto mt-3 max-w-[300px] text-sm leading-6 text-muted-foreground">
-          {mafiaWin
-            ? "تمكنت المافيا من التفوّق على المواطنين وأصبحت أكثر عددًا منهم."
-            : "تمكن المواطنون من كشف المافيا وإخراجها جميعًا من اللعبة."}
+          {jesterWin
+            ? "تم التصويت على المهرج وإخراجه — لكنه حقق هدفه المنشود وفاز وحده بالمباراة!"
+            : mafiaWin
+              ? "تمكنت المافيا من التفوّق على المواطنين وأصبحت أكثر عددًا منهم."
+              : "تمكن المواطنون من كشف المافيا وإخراجها جميعًا من اللعبة."}
         </p>
       </div>
 

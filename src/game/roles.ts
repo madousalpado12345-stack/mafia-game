@@ -56,9 +56,20 @@ export const ROLES: Record<RoleId, RoleInfo> = {
     color: "#4ade80",
     soft: "rgba(74,222,128,0.12)",
   },
+  jester: {
+    id: "jester",
+    name: "المهرج",
+    emoji: "🤡",
+    team: "citizens",
+    short: "اجعل الجميع يصوّتون عليك",
+    description:
+      "دورك غريب: تريد أن يُصوَّت عليك وتُخرج بالتصويت النهاري! أثِر الشكوك حولك بطريقة ذكية دون أن يكتشف أحد نيتك. إذا أُخرجت بالتصويت فزت وحدك بالمباراة.",
+    color: "#c084fc",
+    soft: "rgba(192,132,252,0.13)",
+  },
 };
 
-export const ROLE_ORDER: RoleId[] = ["mafia", "detective", "doctor", "citizen"];
+export const ROLE_ORDER: RoleId[] = ["mafia", "detective", "doctor", "jester", "citizen"];
 
 export function shuffle<T>(items: readonly T[]): T[] {
   const arr = [...items];
@@ -82,6 +93,7 @@ export function buildRoleDeck(playerCount: number, rules: GameSettings): RoleId[
   for (let i = 0; i < mafiaCountFor(playerCount); i++) deck.push("mafia");
   if (rules.detectiveEnabled) deck.push("detective");
   if (rules.doctorEnabled) deck.push("doctor");
+  if (rules.jesterEnabled) deck.push("jester");
   while (deck.length < playerCount) deck.push("citizen");
   return shuffle(deck);
 }

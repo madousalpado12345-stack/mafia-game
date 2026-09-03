@@ -71,6 +71,12 @@ export default function RoleRevealScreen({
                 عندما تُطلب منك، اختر لاعبًا لتحميه من استهداف المافيا.
               </div>
             )}
+            {player.role === "jester" && (
+              <div className="mt-4 rounded-xl border border-purple-500/30 bg-purple-500/10 p-3 text-sm text-muted-foreground">
+                سرّك الأكبر: أثر الشكوك حولك حتى يُصوَّت عليك وتُخرج بالتصويت — عندها
+                تفوز وحدك بالمباراة! لا تكشف نيتك لأحد.
+              </div>
+            )}
           </RoleCard>
           <SecretBadge />
           <div className="flex-1" />

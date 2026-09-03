@@ -17,6 +17,7 @@ export const DEFAULT_SETTINGS: Settings = {
     tieRevote: true,
     detectiveEnabled: true,
     doctorEnabled: true,
+    jesterEnabled: true,
   },
 };
 

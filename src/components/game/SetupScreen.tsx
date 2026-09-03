@@ -254,6 +254,11 @@ export default function SetupScreen({
             enabled={rules.doctorEnabled}
             onToggle={() => setRules({ doctorEnabled: !rules.doctorEnabled })}
           />
+          <RoleToggleCard
+            roleId="jester"
+            enabled={rules.jesterEnabled}
+            onToggle={() => setRules({ jesterEnabled: !rules.jesterEnabled })}
+          />
         </div>
       </div>
 
