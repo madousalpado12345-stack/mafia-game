@@ -65,6 +65,16 @@ class RootErrorBoundary extends React.Component<
   }
 }
 
+// Register the service worker so the game can be installed on a phone home
+// screen and keep working offline. Safe no-op anywhere it's not supported.
+if ("serviceWorker" in navigator && "caches" in window) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {
+      /* SW unavailable (e.g. sandboxed preview iframe) — app still works */
+    });
+  });
+}
+
 const convexUrl = import.meta.env.VITE_CONVEX_URL as string | undefined;
 const convex = convexUrl ? new ConvexReactClient(convexUrl) : null;
 

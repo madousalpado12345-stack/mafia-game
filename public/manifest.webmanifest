@@ -1,17 +1,27 @@
 {
-  "name": "freebuff.com application",
-  "short_name": "freebuff.com",
-  "description": "freebuff.com application",
+  "name": "مافيا — لعبة الشك والخداع",
+  "short_name": "مافيا",
+  "description": "لعبة المافيا الاجتماعية — الشك والخداع والنقاش والتصويت على هاتف واحد",
+  "lang": "ar",
+  "dir": "rtl",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#000000",
+  "orientation": "portrait",
+  "background_color": "#0d0b16",
+  "theme_color": "#0d0b16",
   "icons": [
     {
-      "src": "/logo.png",
+      "src": "/icon.svg",
       "sizes": "any",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
     }
   ]
 }
