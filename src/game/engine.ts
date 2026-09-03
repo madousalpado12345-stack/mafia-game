@@ -2,12 +2,14 @@ import { createAiStates } from "./ai";
 import { ROLES, buildRoleDeck } from "./roles";
 import type {
   Difficulty,
+  GamePhase,
   GameSettings,
   GameState,
   NightStep,
   PlayMode,
   Player,
   RoleId,
+  ScreenName,
   VoteOutcome,
   VoteRecord,
   Winner,
@@ -42,6 +44,7 @@ export function createGame(
     discussionScript: [],
     aiVotesRecorded: false,
     spectateShown: false,
+    discussionTimer: null,
     night: 1,
     revealCursor: 0,
     nightActions: { mafiaTargetId: null, doctorSaveId: null, detectiveCheckId: null },
@@ -120,6 +123,16 @@ export function currentNightStep(state: GameState): NightStep | "done" {
   return "done";
 }
 
+/** Unified elimination step used by every kill/vote: marks the player dead and
+ *  logs the public event. Dead players are excluded from every later decision
+ *  because all AI/action code only ever looks at alive players. */
+function eliminateAndLog(state: GameState, playerId: string, phase: "night" | "day", text: string): Player {
+  const p = playerById(state.players, playerId);
+  p.status = "dead";
+  state.log.push({ id: uid("l"), night: state.night, phase, text });
+  return p;
+}
+
 /** Applies the night's actions, marks the victim dead, logs public events,
  *  and returns the winner if the game ended during the night. */
 export function resolveNight(state: GameState): Winner | null {
@@ -129,14 +142,12 @@ export function resolveNight(state: GameState): Winner | null {
 
   state.nightEliminatedId = eliminatedId;
   if (eliminatedId) {
-    const p = playerById(state.players, eliminatedId);
-    p.status = "dead";
-    state.log.push({
-      id: uid("l"),
-      night: state.night,
-      phase: "night",
-      text: `خرج ${p.name} من اللعبة أثناء الليل.`,
-    });
+    eliminateAndLog(
+      state,
+      eliminatedId,
+      "night",
+      `خرج ${playerById(state.players, eliminatedId).name} من اللعبة أثناء الليل.`,
+    );
   } else {
     state.log.push({
       id: uid("l"),
@@ -201,16 +212,10 @@ export function applyVoteElimination(state: GameState, outcome: VoteOutcome): Wi
 
   if (outcome.kind === "eliminate" && eliminatedId) {
     const p = playerById(state.players, eliminatedId);
-    p.status = "dead";
     const reveal = state.settings.revealRoleOnElimination
       ? ` وكان دوره: ${ROLES[p.role].name}.`
       : "";
-    state.log.push({
-      id: uid("l"),
-      night: state.night,
-      phase: "day",
-      text: `خرج ${p.name} من اللعبة بالتصويت${reveal}`,
-    });
+    eliminateAndLog(state, eliminatedId, "day", `خرج ${p.name} من اللعبة بالتصويت${reveal}`);
     // المهرج يفوز وحده إذا أُخرج بالتصويت النهاري.
     if (p.role === "jester") return "jester";
   } else if (outcome.kind === "tie") {
@@ -230,6 +235,33 @@ export function applyVoteElimination(state: GameState, outcome: VoteOutcome): Wi
   }
 
   return checkWin(state.players);
+}
+
+/** Coarse phase of the game derived from the fine-grained screen. Always one of
+ *  the six allowed values — never undefined. */
+export function phaseOf(screen: ScreenName): GamePhase {
+  switch (screen) {
+    case "roleIntro":
+    case "roleReveal":
+      return "roleReveal";
+    case "nightIntro":
+    case "nightMafia":
+    case "nightDoctor":
+    case "nightDetective":
+      return "night";
+    case "dayResults":
+      return "day";
+    case "discussion":
+      return "discussion";
+    case "votingHandoff":
+    case "voteResults":
+      return "voting";
+    case "win":
+      return "gameOver";
+    default:
+      // menu / setup / names / howTo / settings / spectate
+      return "roleReveal";
+  }
 }
 
 /** Resets round-scoped fields and moves to the next night. */

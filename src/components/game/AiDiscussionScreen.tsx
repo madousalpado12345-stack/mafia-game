@@ -4,15 +4,21 @@ import { playSound } from "@/game/sound";
 import type { GameState } from "@/game/types";
 import { cn } from "@/lib/utils";
 import { useEffect, useRef, useState } from "react";
-import { formatTime, GameTopBar, PrimaryButton } from "./ui";
+import { formatTime, GameTopBar } from "./ui";
 
 export default function AiDiscussionScreen({
   game,
+  timer,
+  onTick,
   onDone,
   onExit,
   onSave,
 }: {
   game: GameState;
+  /** Countdown stored in game state (single source of truth). */
+  timer: { duration: number; remaining: number };
+  /** Ticks the countdown down by one second (the interval lives here). */
+  onTick: () => void;
   onDone: () => void;
   onExit: () => void;
   onSave: () => void;
@@ -24,19 +30,19 @@ export default function AiDiscussionScreen({
   const [fast, setFast] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
 
-  // Real countdown — starts as soon as the discussion screen mounts. When it
-  // hits zero the discussion ends automatically and voting begins.
-  const initialSeconds = Math.max(1, Math.round((game.settings.discussionMinutes || 3) * 60));
-  const [secondsLeft, setSecondsLeft] = useState(initialSeconds);
+  const secondsLeft = timer.remaining;
   const timerFiredRef = useRef(false);
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
 
+  // Single countdown interval — cleaned up on pause, unmount and transitions.
   useEffect(() => {
-    const t = setInterval(() => setSecondsLeft((s) => Math.max(0, s - 1)), 1000);
-    return () => clearInterval(t); // timers are cleaned up on any transition
-  }, []);
+    if (secondsLeft <= 0) return;
+    const iv = setInterval(onTick, 1000);
+    return () => clearInterval(iv);
+  }, [secondsLeft, onTick]);
 
+  // At 00:00 the discussion ends and voting begins automatically.
   useEffect(() => {
     if (secondsLeft > 0 || timerFiredRef.current) return;
     timerFiredRef.current = true;
@@ -45,11 +51,11 @@ export default function AiDiscussionScreen({
   }, [secondsLeft]);
 
   const current = shown < script.length ? script[shown] : null;
-  const done = shown >= script.length;
+  const chatDone = shown >= script.length;
   const human = humanPlayer(game.players);
 
   useEffect(() => {
-    if (paused || done || !current) return;
+    if (paused || chatDone || !current) return;
     const speed = fast ? 6 : 22;
     if (typed < current.text.length) {
       const t = setTimeout(() => setTyped((n) => n + 1), speed);
@@ -62,7 +68,7 @@ export default function AiDiscussionScreen({
       playSound("click");
     }, pauseMs);
     return () => clearTimeout(t);
-  }, [paused, done, current, typed, fast]);
+  }, [paused, chatDone, current, typed, fast]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -90,19 +96,22 @@ export default function AiDiscussionScreen({
 
       <div className="mx-auto flex items-center gap-2 rounded-full border border-accent/30 bg-card/70 px-4 py-1.5">
         <span
-          className={`text-lg font-black tabular-nums tracking-tight ${
-            secondsLeft <= 10 ? "animate-pulse text-primary" : "text-accent text-glow-gold"
-          }`}
+          className={cn(
+            "text-lg font-black tabular-nums tracking-tight",
+            secondsLeft <= 10 ? "animate-pulse text-primary" : "text-accent text-glow-gold",
+          )}
         >
           {formatTime(secondsLeft)}
         </span>
         <span className="text-[10px] font-bold text-muted-foreground">متبقي من وقت النقاش</span>
       </div>
 
-      <div className="game-scroll flex max-h-[52dvh] flex-1 flex-col gap-3 overflow-y-auto pr-1">
+      <div className="game-scroll flex max-h-[48dvh] flex-1 flex-col gap-3 overflow-y-auto pr-1">
         {script.slice(0, shown).map((u, i) => {
           const speaker = game.players.find((p) => p.id === u.playerId);
-          const persona = speaker?.isAi ? personaById(game.aiStates?.[speaker.id]?.personalityId ?? "smart") : null;
+          const persona = speaker?.isAi
+            ? personaById(game.aiStates?.[speaker.id]?.personalityId ?? "smart")
+            : null;
           return (
             <ChatBubble
               key={i}
@@ -118,7 +127,9 @@ export default function AiDiscussionScreen({
           <ChatBubble
             key={`typing-${shown}`}
             name={game.players.find((p) => p.id === current.playerId)?.name ?? "؟"}
-            emoji={personaById(game.aiStates?.[current.playerId]?.personalityId ?? "smart").emoji}
+            emoji={
+              personaById(game.aiStates?.[current.playerId]?.personalityId ?? "smart").emoji
+            }
             text={current.text.slice(0, typed)}
             active={!paused}
           />
@@ -127,45 +138,40 @@ export default function AiDiscussionScreen({
       </div>
 
       <div className="mt-auto flex flex-col gap-2">
-        {!done && (
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setPaused((p) => !p);
-                playSound("click");
-              }}
-              className="h-11 flex-1 rounded-xl border border-white/10 bg-card/70 text-sm font-extrabold transition-all hover:border-accent/40"
-            >
-              {paused ? "▶️ متابعة" : "⏸️ إيقاف مؤقت"}
-            </button>
-            <button
-              type="button"
-              onClick={skipAll}
-              className="h-11 flex-1 rounded-xl border border-white/10 bg-card/70 text-sm font-extrabold text-muted-foreground transition-all hover:border-accent/40 hover:text-foreground"
-            >
-              ⏩ تخطي
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                playSound("click");
-                onDone();
-              }}
-              className="h-11 flex-1 rounded-xl border border-primary/40 bg-primary/10 text-sm font-extrabold text-primary transition-all hover:bg-primary/20"
-            >
-              إنهاء النقاش الآن
-            </button>
-          </div>
+        {chatDone && secondsLeft > 0 && (
+          <p className="text-center text-[11px] text-muted-foreground">
+            انتهى الحوار — سيبدأ التصويت تلقائيًا عند انتهاء المؤقت، أو اضغط «إنهاء النقاش الآن».
+          </p>
         )}
-      {done && (
-        <PrimaryButton onClick={onDone}>الانتقال إلى التصويت 🗳️</PrimaryButton>
-      )}
-      {done && secondsLeft > 0 && (
-        <p className="text-center text-[10px] text-muted-foreground">
-          انتهى الحوار — عند انتهاء المؤقت سيبدأ التصويت تلقائيًا، أو اضغط الزر أعلاه الآن.
-        </p>
-      )}
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setPaused((p) => !p);
+              playSound("click");
+            }}
+            className="h-11 flex-1 rounded-xl border border-white/10 bg-card/70 text-sm font-extrabold transition-all hover:border-accent/40"
+          >
+            {paused ? "▶️ متابعة" : "⏸️ إيقاف مؤقت"}
+          </button>
+          <button
+            type="button"
+            onClick={skipAll}
+            className="h-11 flex-1 rounded-xl border border-white/10 bg-card/70 text-sm font-extrabold text-muted-foreground transition-all hover:border-accent/40 hover:text-foreground"
+          >
+            ⏩ تخطي
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              playSound("click");
+              onDone();
+            }}
+            className="h-11 flex-1 rounded-xl border border-primary/40 bg-primary/10 text-sm font-extrabold text-primary transition-all hover:bg-primary/20"
+          >
+            إنهاء النقاش الآن
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -340,22 +340,50 @@ export default function Landing() {
     playSound(res.sound);
   };
 
-  /** Day results shown → enter the discussion phase (timer starts on mount). */
+  /** Day results shown → enter the discussion phase and start its countdown.
+   *  The timer is created here, stored in game state and cleared when voting
+   *  starts — one timer per discussion, never two at once. */
   const startDiscussion = () => {
     if (!state.game) return;
     playSound("click");
-    if (!isAiMode(state.game)) {
-      setState((s) => ({ ...s, screen: "discussion" }));
+    const game = structuredClone(state.game);
+    const minutes = Math.max(1, Math.round(game.settings.discussionMinutes || 2));
+    game.discussionTimer = { duration: minutes * 60, remaining: minutes * 60 };
+    if (isAiMode(game)) {
+      const aiAlive = game.players.filter((p) => p.isAi && p.status === "alive").length;
+      game.discussionScript = aiAlive > 0 ? buildDiscussionScript(game) : [];
+      setState((s) => ({ ...s, game }));
+      if (aiAlive === 0) beginVoting(game);
       return;
     }
-    const game = structuredClone(state.game);
-    const aiAlive = game.players.filter((p) => p.isAi && p.status === "alive").length;
-    game.discussionScript = aiAlive > 0 ? buildDiscussionScript(game) : [];
     setState((s) => ({ ...s, game }));
-    if (aiAlive === 0) beginVoting(game);
   };
 
-  /** Resets the vote round; in AI mode it fills the AI votes first. */
+  /** One-second tick of the discussion countdown — persisted in game state. */
+  const tickDiscussionTimer = () => {
+    setState((s) => {
+      if (!s.game?.discussionTimer || s.screen !== "discussion") return s;
+      const game = structuredClone(s.game);
+      const timer = game.discussionTimer;
+      if (!timer) return s;
+      const remaining = Math.max(0, timer.remaining - 1);
+      game.discussionTimer = { duration: timer.duration, remaining };
+      return { ...s, game };
+    });
+  };
+
+  /** Restarts the countdown with a chosen duration (friends-mode chips). */
+  const resetDiscussionTimer = (minutes: number) => {
+    setState((s) => {
+      if (!s.game) return s;
+      const game = structuredClone(s.game);
+      game.discussionTimer = { duration: minutes * 60, remaining: minutes * 60 };
+      return { ...s, game };
+    });
+  };
+
+  /** Resets the vote round; in AI mode it fills the AI votes first. Also stops
+   *  and clears the discussion timer — voting only happens after discussion. */
   const beginVoting = (game: GameState) => {
     const g = structuredClone(game);
     g.votes = [];
@@ -364,6 +392,7 @@ export default function Landing() {
     g.lastVoteOutcome = null;
     g.dayEliminatedId = null;
     g.aiVotesRecorded = false;
+    g.discussionTimer = null;
     if (isAiMode(g)) {
       g.votes = aiVotesFor(g, null);
       const human = humanPlayer(g.players);
@@ -606,24 +635,34 @@ export default function Landing() {
         return game ? (
           <DayScreen game={game} onContinue={startDiscussion} onExit={exitToMenu} onSave={saveNow} />
         ) : null;
-      case "discussion":
-        return game ? (
-          game.playMode === "ai" ? (
-            <AiDiscussionScreen
-              game={game}
-              onDone={startVoting}
-              onExit={exitToMenu}
-              onSave={saveNow}
-            />
-          ) : (
-            <DiscussionScreen
-              game={game}
-              onDone={startVoting}
-              onExit={exitToMenu}
-              onSave={saveNow}
-            />
-          )
-        ) : null;
+      case "discussion": {
+        if (!game) return null;
+        const minutes = Math.max(1, Math.round(game.settings.discussionMinutes || 2));
+        const timer = game.discussionTimer ?? {
+          duration: minutes * 60,
+          remaining: minutes * 60,
+        };
+        return game.playMode === "ai" ? (
+          <AiDiscussionScreen
+            game={game}
+            timer={timer}
+            onTick={tickDiscussionTimer}
+            onDone={startVoting}
+            onExit={exitToMenu}
+            onSave={saveNow}
+          />
+        ) : (
+          <DiscussionScreen
+            game={game}
+            timer={timer}
+            onTick={tickDiscussionTimer}
+            onReset={resetDiscussionTimer}
+            onDone={startVoting}
+            onExit={exitToMenu}
+            onSave={saveNow}
+          />
+        );
+      }
       case "votingHandoff": {
         if (!game) return null;
         const ai = isAiMode(game);

@@ -8,6 +8,15 @@ export type PlayMode = "friends" | "ai";
 
 export type Difficulty = "easy" | "medium" | "hard";
 
+/** Coarse game phase — derived from the fine-grained screen (never undefined). */
+export type GamePhase =
+  | "roleReveal"
+  | "night"
+  | "day"
+  | "discussion"
+  | "voting"
+  | "gameOver";
+
 export type NightStep = "mafia" | "doctor" | "detective";
 
 export type ScreenName =
@@ -142,6 +151,9 @@ export interface GameState {
   aiVotesRecorded: boolean;
   /** Set once the human has seen the one-time "you are out" screen in AI mode. */
   spectateShown?: boolean;
+  /** Active discussion countdown — created on entering discussion and cleared
+   *  when moving to voting (single timer, never two at once). */
+  discussionTimer: { duration: number; remaining: number } | null;
   night: number;
   revealCursor: number;
   nightActions: NightActions;

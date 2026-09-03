@@ -2,47 +2,71 @@ import { alivePlayers } from "@/game/engine";
 import { playSound } from "@/game/sound";
 import type { GameState } from "@/game/types";
 import { cn } from "@/lib/utils";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { GameTopBar, formatTime } from "./ui";
 
 const DURATIONS = [1, 2, 3, 5, 10];
 
 export default function DiscussionScreen({
   game,
+  timer,
+  onTick,
+  onReset,
   onDone,
   onExit,
   onSave,
 }: {
   game: GameState;
+  /** Countdown stored in game state (single source of truth). */
+  timer: { duration: number; remaining: number };
+  /** Ticks the countdown down by one second (the interval lives here). */
+  onTick: () => void;
+  /** Restarts the countdown with a chosen duration (minutes). */
+  onReset: (minutes: number) => void;
   onDone: () => void;
   onExit: () => void;
   onSave: () => void;
 }) {
-  const [duration, setDuration] = useState(game.settings.discussionMinutes);
-  const [secondsLeft, setSecondsLeft] = useState(game.settings.discussionMinutes * 60);
   const [running, setRunning] = useState(true);
   const [ended, setEnded] = useState(false);
+  const finishedRef = useRef(false);
+  const secondsLeft = timer.remaining;
+  const total = Math.max(1, timer.duration);
 
+  // Single interval — cleaned up on pause, unmount and every transition.
   useEffect(() => {
     if (!running || secondsLeft <= 0) return;
-    const t = setTimeout(() => setSecondsLeft((s) => s - 1), 1000);
-    return () => clearTimeout(t);
-  }, [running, secondsLeft]);
+    const iv = setInterval(onTick, 1000);
+    return () => clearInterval(iv);
+  }, [running, secondsLeft, onTick]);
+
+  // At 00:00 → stop, then move to voting automatically.
+  useEffect(() => {
+    if (secondsLeft > 0 || finishedRef.current) return;
+    finishedRef.current = true;
+    setRunning(false);
+    setEnded(true);
+    playSound("timerEnd");
+  }, [secondsLeft]);
 
   useEffect(() => {
-    if (secondsLeft === 0 && !ended) {
-      playSound("timerEnd");
-      setRunning(false);
-      setEnded(true);
-    }
-  }, [secondsLeft, ended]);
+    if (!ended) return;
+    const t = setTimeout(() => {
+      playSound("click");
+      onDone();
+    }, 900);
+    return () => clearTimeout(t);
+  }, [ended, onDone]);
 
   const pickDuration = (m: number) => {
-    setDuration(m);
-    setSecondsLeft(m * 60);
-    setRunning(false);
+    playSound("click");
+    finishedRef.current = false;
     setEnded(false);
+    setRunning(true);
+    onReset(m);
   };
+
+  const percent = Math.min(100, Math.round((secondsLeft / total) * 100));
 
   return (
     <div className="flex flex-1 flex-col gap-5">
@@ -64,16 +88,22 @@ export default function DiscussionScreen({
         )}
       >
         <p className="text-xs font-extrabold text-muted-foreground">
-          {ended ? "انتهى وقت النقاش" : "الوقت المتبقي"}
+          {ended ? "انتهى وقت النقاش — جارٍ الانتقال إلى التصويت..." : "الوقت المتبقي"}
         </p>
         <p
           className={cn(
             "mt-2 text-7xl font-black tabular-nums tracking-tight",
-            ended ? "text-primary animate-pulse-red" : "text-accent text-glow-gold",
+            ended ? "text-primary animate-pulse-red" : secondsLeft <= 10 ? "text-primary animate-pulse-red" : "text-accent text-glow-gold",
           )}
         >
           {formatTime(secondsLeft)}
         </p>
+        <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+          <div
+            className="h-full rounded-full bg-accent transition-all duration-1000 ease-linear"
+            style={{ width: `${percent}%` }}
+          />
+        </div>
         <p className="mt-2 text-xs text-muted-foreground">
           {alivePlayers(game.players).length} لاعبين أحياء
         </p>
@@ -89,7 +119,7 @@ export default function DiscussionScreen({
                 onClick={() => pickDuration(m)}
                 className={cn(
                   "rounded-lg border px-3 py-1.5 text-xs font-extrabold transition-all",
-                  duration === m
+                  m * 60 === total
                     ? "border-accent bg-accent text-accent-foreground"
                     : "border-white/10 bg-card/70 text-muted-foreground hover:border-accent/50",
                 )}
@@ -101,30 +131,26 @@ export default function DiscussionScreen({
           <div className="flex gap-2">
             <button
               type="button"
-              onClick={() => setRunning((r) => !r)}
+              onClick={() => {
+                playSound("click");
+                setRunning((r) => !r);
+              }}
               className="h-12 flex-1 rounded-xl border border-white/10 bg-card/70 text-sm font-extrabold transition-all hover:border-accent/40"
             >
               {running ? "⏸ إيقاف مؤقت" : "▶️ متابعة"}
             </button>
             <button
               type="button"
-              onClick={() => setSecondsLeft(0)}
+              onClick={() => {
+                playSound("click");
+                onDone();
+              }}
               className="h-12 flex-1 rounded-xl border border-white/10 bg-card/70 text-sm font-extrabold text-muted-foreground transition-all hover:border-primary/50 hover:text-foreground"
             >
-              إنهاء النقاش
+              إنهاء النقاش الآن
             </button>
           </div>
         </>
-      )}
-
-      {ended && (
-        <button
-          type="button"
-          onClick={onDone}
-          className="h-14 w-full rounded-xl bg-primary text-lg font-black text-primary-foreground shadow-[0_4px_28px_rgba(220,60,60,0.4)] transition-all hover:bg-primary/90 active:scale-[0.98]"
-        >
-          الانتقال إلى التصويت 🗳️
-        </button>
       )}
     </div>
   );

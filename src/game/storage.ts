@@ -12,7 +12,7 @@ export const DEFAULT_SETTINGS: Settings = {
     difficulty: "medium",
   },
   rules: {
-    discussionMinutes: 3,
+    discussionMinutes: 2,
     revealRoleOnElimination: true,
     doctorCanHealSelf: true,
     allowAbstain: true,

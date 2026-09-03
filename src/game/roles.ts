@@ -6,6 +6,8 @@ export interface RoleInfo {
   emoji: string;
   team: "mafia" | "citizens";
   short: string;
+  /** Short description shown on the secret role-reveal card. */
+  brief: string;
   description: string;
   color: string;
   soft: string;
@@ -14,10 +16,11 @@ export interface RoleInfo {
 export const ROLES: Record<RoleId, RoleInfo> = {
   mafia: {
     id: "mafia",
-    name: "المافيا",
+    name: "مافيا",
     emoji: "🔪",
     team: "mafia",
     short: "اقضِ على المواطنين ليلًا دون أن يُكشف أمرك",
+    brief: "تعمل مع المافيا الأخرى للقضاء على المواطنين أثناء الليل.",
     description:
       "كل ليلة تختارون معًا لاعبًا واحدًا لإخراجه من اللعبة. مهمتكم ألا يعرف أحد هويتكم، وأن تصبحوا أكثر عددًا من المواطنين.",
     color: "#f87171",
@@ -29,6 +32,7 @@ export const ROLES: Record<RoleId, RoleInfo> = {
     emoji: "👤",
     team: "citizens",
     short: "اكتشف المافيا وصوّت عليها",
+    brief: "ليس لديك قدرة ليلية. حاول اكتشاف المافيا من خلال النقاش والتصويت.",
     description:
       "ليس لديك قدرة خاصة، لكن صوتك مهم. راقب تصرفات الجميع وناقش واستنتج من المافيا ثم صوّت لإخراجها.",
     color: "#a8b3c5",
@@ -36,10 +40,11 @@ export const ROLES: Record<RoleId, RoleInfo> = {
   },
   detective: {
     id: "detective",
-    name: "المحقق",
+    name: "محقق",
     emoji: "🕵️",
     team: "citizens",
     short: "افحص لاعبًا كل ليلة لتعرف حقيقته",
+    brief: "يمكنك التحقيق في لاعب أثناء الليل لمعرفة ما إذا كان من المافيا.",
     description:
       "كل ليلة تختار لاعبًا واحدًا لفحصه، وسيعرف الهاتف وحدك ما إذا كان من المافيا. استخدم المعلومة بذكاء ولا تكشف نفسك بسرعة.",
     color: "#38bdf8",
@@ -47,10 +52,11 @@ export const ROLES: Record<RoleId, RoleInfo> = {
   },
   doctor: {
     id: "doctor",
-    name: "الطبيب",
+    name: "طبيب",
     emoji: "❤️",
     team: "citizens",
     short: "احمِ لاعبًا واحدًا كل ليلة",
+    brief: "يمكنك حماية لاعب أثناء الليل.",
     description:
       "كل ليلة تختار لاعبًا واحدًا لتحميه من المافيا. إذا كان هو الهدف المستهدف، فلن يخرج أحد من اللعبة تلك الليلة.",
     color: "#4ade80",
@@ -58,10 +64,11 @@ export const ROLES: Record<RoleId, RoleInfo> = {
   },
   jester: {
     id: "jester",
-    name: "المهرج",
+    name: "مهرج",
     emoji: "🤡",
     team: "citizens",
     short: "اجعل الجميع يصوّتون عليك",
+    brief: "هدفك أن يتم إخراجك عن طريق التصويت أثناء النهار.",
     description:
       "دورك غريب: تريد أن يُصوَّت عليك وتُخرج بالتصويت النهاري! أثِر الشكوك حولك بطريقة ذكية دون أن يكتشف أحد نيتك. إذا أُخرجت بالتصويت فزت وحدك بالمباراة.",
     color: "#c084fc",

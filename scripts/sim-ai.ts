@@ -20,6 +20,7 @@ import {
   computeVoteOutcome,
   createGame,
   currentNightStep,
+  phaseOf,
   resolveNight,
   startNextNight,
 } from "../src/game/engine";
@@ -27,7 +28,7 @@ import { aiNamesFor } from "../src/game/personas";
 import { ROLES } from "../src/game/roles";
 import { difficultyMeta, safeDifficulty } from "../src/game/ai";
 import { normalizeSettings } from "../src/game/storage";
-import type { Difficulty, GameSettings, GameState, Winner } from "../src/game/types";
+import type { Difficulty, GamePhase, GameSettings, GameState, ScreenName, Winner } from "../src/game/types";
 
 const RULES: GameSettings = {
   discussionMinutes: 3,
@@ -43,6 +44,7 @@ const RULES: GameSettings = {
 const DIFFICULTIES: Difficulty[] = ["easy", "medium", "hard"];
 let failures = 0;
 let nightsTotal = 0;
+let gamesReachedRound2 = 0;
 
 function fail(msg: string) {
   failures += 1;
@@ -77,7 +79,9 @@ function humanSmartVote(game: GameState): void {
 function simulateAiGame(count: number, difficulty: Difficulty): Winner {
   const names = ["أحمد", ...aiNamesFor(count - 1, ["أحمد"])];
   const game = createGame(names, RULES, "ai", difficulty);
-  return runAiGame(game, count, difficulty);
+  const winner = runAiGame(game, count, difficulty);
+  if (game.night >= 2) gamesReachedRound2 += 1; // round 2 started cleanly
+  return winner;
 }
 
 /** Plays an already-created AI game (night by night) until it ends. */
@@ -305,6 +309,42 @@ function simulateFriendsGame(count: number): Winner {
   return game.winner as Winner;
 }
 
+// ---- phase + role-card integrity -------------------------------------------
+function checkPhaseAndRoleCards(): void {
+  const valid: GamePhase[] = ["roleReveal", "night", "day", "discussion", "voting", "gameOver"];
+  const screens: ScreenName[] = [
+    "roleIntro",
+    "roleReveal",
+    "nightIntro",
+    "nightMafia",
+    "nightDoctor",
+    "nightDetective",
+    "dayResults",
+    "discussion",
+    "votingHandoff",
+    "voteResults",
+    "win",
+    "spectate",
+    "menu",
+    "setup",
+    "names",
+    "howTo",
+    "settings",
+  ];
+  for (const s of screens) {
+    const phase = phaseOf(s);
+    assert(valid.includes(phase), `phaseOf(${s}) returns a valid phase (got ${phase})`);
+  }
+  for (const id of ["mafia", "citizen", "detective", "doctor", "jester"] as const) {
+    assert(ROLES[id].brief.length > 0, `${id} has a reveal-card description`);
+    assert(ROLES[id].name.length > 0 && ROLES[id].emoji.length > 0, `${id} has name/icon`);
+  }
+  const game = createGame(["أحمد", ...aiNamesFor(5, ["أحمد"])], RULES, "ai", "medium");
+  assert(game.discussionTimer === null, "fresh game has no active discussion timer");
+  assert(game.players.filter((p) => p.status === "alive").length === 6, "all players start alive");
+  assert(game.winner === null, "no winner at start");
+}
+
 // ---- stale/legacy settings regression (the 'hint' crash) --------------------
 function checkLegacySettings(): void {
   // Simulates an app state saved BEFORE AI mode existed (no playMode/difficulty)
@@ -383,6 +423,13 @@ console.log(
   `  فوز المواطنين: ${aiWins.citizens} · فوز المافيا: ${aiWins.mafia} · فوز المهرج: ${aiWins.jester}`,
 );
 console.log(`  متوسط عدد الليالي: ${(nightsTotal / Math.max(1, aiGames)).toFixed(1)}`);
+console.log(
+  `  ألعاب وصلت للجولة الثانية: ${((gamesReachedRound2 / Math.max(1, aiGames)) * 100).toFixed(0)}%`,
+);
+
+console.log("\nالتحقق من المراحل وبطاقات الأدوار:");
+checkPhaseAndRoleCards();
+console.log("  ✓ اكتمل");
 
 console.log("\nالتحقق من الإعدادات القديمة (خطأ hint):");
 checkLegacySettings();
