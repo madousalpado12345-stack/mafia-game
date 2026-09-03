@@ -39,6 +39,7 @@ const RULES: GameSettings = {
   detectiveEnabled: true,
   doctorEnabled: true,
   jesterEnabled: true,
+  mafiaCount: null,
 };
 
 const DIFFICULTIES: Difficulty[] = ["easy", "medium", "hard"];
@@ -113,7 +114,8 @@ function runAiGame(game: GameState, count: number, difficulty: Difficulty): Winn
       const target = game.players.find((p) => p.id === game.nightActions.mafiaTargetId)!;
       assert(ROLES[target.role].team !== "mafia", "mafia target is never mafia");
     }
-    resolveNight(game);
+    const wNight = resolveNight(game); // like Landing.finishNight — honor the win
+    if (wNight) game.winner = wNight;
     afterNightResolved(game);
     if (game.winner) break;
 
@@ -214,7 +216,8 @@ function firstRoundHumanStats(
     game.nightActions.detectiveCheckId = target.id;
     game.detectiveResult = { targetId: target.id, isMafia: ROLES[target.role].team === "mafia" };
   }
-  resolveNight(game);
+  const wNight = resolveNight(game); // honor a night win (like Landing.finishNight)
+  if (wNight) game.winner = wNight;
   const aliveAfterNight = human.status === "alive";
   if (game.winner) return { mafiaTeam, aliveAfterNight, aliveAfterDay: human.status === "alive" };
 
@@ -223,7 +226,8 @@ function firstRoundHumanStats(
   game.votes = aiVotesFor(game, null);
   if (human.status === "alive") humanSmartVote(game);
   const outcome = computeVoteOutcome(game.votes, game.settings.allowAbstain);
-  applyVoteElimination(game, outcome);
+  const wDay = applyVoteElimination(game, outcome);
+  if (wDay) game.winner = wDay;
   return { mafiaTeam, aliveAfterNight, aliveAfterDay: human.status === "alive" };
 }
 
@@ -238,7 +242,8 @@ function checkHumanOutAtNightContinues(): void {
     applyAiNightActions(game);
     game.nightActions.mafiaTargetId = human.id; // force the night kill on the human
     game.nightActions.doctorSaveId = null; // prevent a save from blocking the test
-    resolveNight(game);
+    const wNight = resolveNight(game);
+    if (wNight) game.winner = wNight;
     assert(human.status === "dead", "human is forced out at night");
     if (game.winner) continue;
     startNextNight(game);
@@ -260,6 +265,7 @@ function checkHumanOutByVoteContinues(): void {
     game.votes = voters.map((v) => ({ voterId: v.id, targetId: human.id }));
     const outcome = computeVoteOutcome(game.votes, game.settings.allowAbstain);
     const winner = applyVoteElimination(game, outcome);
+    if (winner) game.winner = winner;
     assert(human.status === "dead", "human is forced out by vote");
     if (winner) continue;
     recordVotes(game);
@@ -291,7 +297,8 @@ function simulateFriendsGame(count: number): Winner {
       game.nightActions.detectiveCheckId = target.id;
       game.detectiveResult = { targetId: target.id, isMafia: ROLES[target.role].team === "mafia" };
     }
-    resolveNight(game);
+    const wNight = resolveNight(game); // honor a night win
+    if (wNight) game.winner = wNight;
     if (game.winner) break;
     game.votes = alivePlayers(game.players).map((p) => {
       const candidates = alivePlayers(game.players).filter((q) => q.id !== p.id);

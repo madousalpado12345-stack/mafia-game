@@ -96,20 +96,28 @@ export function mafiaTeammates(state: GameState, mafiaId: string): Player[] {
 }
 
 /** Win conditions — recomputed from the CURRENT alive roster after every
- *  elimination (night kill or day vote). Never based on kill counts.
+ *  elimination (night kill or day vote). Never based on kill counts, on the
+ *  round number, or on any previous-round data.
  *
- *  • Mafia wins ONLY when aliveMafia >= aliveNonMafia (parity).
  *  • Citizens win when the last mafia is gone (aliveMafia === 0).
+ *  • Mafia wins only when the game reaches its final state: exactly ONE
+ *    (or fewer) non-mafia player remains alive (aliveNonMafia <= 1) — every
+ *    other non-mafia role (محقق / طبيب / مهرج / مواطن) counts toward that
+ *    number.
+ *    Killing a single player is never enough by itself; the game keeps
+ *    cycling night → day → discussion → voting until a real win state.
  *  • Otherwise the game continues. */
 export function checkWin(players: Player[]): Winner | null {
   const alive = players.filter((p) => p.status === "alive");
   const aliveMafia = alive.filter((p) => isMafiaTeam(p)).length;
   const aliveNonMafia = alive.length - aliveMafia;
 
-  // المافيا تفوز فقط عندما تساوي أو تتجاوز عدد غير المافيا الأحياء.
-  if (aliveMafia >= aliveNonMafia) return "mafia";
-  // المواطنون يفوزون عندما لا تبقى أي مافيا على قيد الحياة.
+  // جميع المافيا خرجوا → فوز المواطنين.
   if (aliveMafia === 0) return "citizens";
+  // سيطرة المافيا الكاملة: لا يبقى سوى لاعب واحد (أو لا أحد) من غير المافيا.
+  // الوصول إلى الصفر مستحيل عبر اللعب العادي (اللعبة تنتهي عند الواحد)،
+  // لكن الشرط يغلق أي حلقة لا نهائية افتراضية.
+  if (aliveNonMafia <= 1) return "mafia";
   return null;
 }
 
