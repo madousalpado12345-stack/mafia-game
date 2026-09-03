@@ -288,6 +288,17 @@ export const fr: Dict = {
     continue: "Continuer à regarder 👁️",
   },
 
+  narrator: {
+    nightIntro:
+      "Fermez les yeux... la nuit est tombée sur le village. Réveillez-vous, porteurs des rôles spéciaux, un par un.",
+    mafia: "C'est maintenant le tour de la mafia... ouvrez les yeux, mafia.",
+    doctor: "C'est maintenant le tour du docteur... ouvrez les yeux, docteur.",
+    detective: "C'est maintenant le tour de l'inspecteur... ouvrez les yeux, inspecteur.",
+    nightEnd:
+      "Les rôles de la nuit sont terminés... tout le monde, fermez les yeux. Nous passons au matin.",
+    test: "Test du narrateur... m'entendez-vous clairement ?",
+  },
+
   settings: {
     title: "Paramètres",
     subtitle: "Les paramètres sont enregistrés automatiquement.",
@@ -309,6 +320,13 @@ export const fr: Dict = {
     language: "Langue",
     darkMode: "Mode sombre",
     darkValue: "Toujours activé",
+    narratorTitle: "Narrateur vocal",
+    narratorLabel: "Narrateur vocal",
+    narratorHint: "Commentaire vocal naturel du narrateur pendant la nuit, automatiquement.",
+    narratorVolume: "Volume du narrateur",
+    narratorVoice: "Voix du narrateur",
+    narratorDefaultVoice: "Par défaut (meilleure pour cet appareil)",
+    narratorTest: "🔊 Tester la voix",
   },
 
   howTo: {

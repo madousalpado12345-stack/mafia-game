@@ -170,6 +170,12 @@ export interface Prefs {
   /** Selected game mode in the setup screen. */
   playMode: PlayMode;
   difficulty: Difficulty;
+  /** Voice narrator during the night phase (AI speech synthesis). */
+  narratorOn: boolean;
+  /** Narrator loudness 0..1. */
+  narratorVolume: number;
+  /** Preferred narrator voiceURI for the current language ("" = auto pick). */
+  narratorVoice: string;
 }
 
 export interface Settings {

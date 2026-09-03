@@ -1,6 +1,8 @@
+import { cancelNarrator, narratorVoices, speakLine } from "@/game/narrator";
 import type { Settings } from "@/game/types";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n";
+import { useEffect, useState } from "react";
 import { GhostButton, LanguagePicker, ScreenShell, SectionTitle } from "./ui";
 
 const DURATIONS = [1, 2, 3, 5, 10];
@@ -55,12 +57,33 @@ export default function SettingsScreen({
   onChange: (next: Settings) => void;
   onBack: () => void;
 }) {
-  const { t: tr } = useI18n();
+  const { t: tr, lang } = useI18n();
   const { prefs, rules } = settings;
   const setPrefs = (patch: Partial<Settings["prefs"]>) =>
     onChange({ ...settings, prefs: { ...prefs, ...patch } });
   const setRules = (patch: Partial<Settings["rules"]>) =>
     onChange({ ...settings, rules: { ...rules, ...patch } });
+
+  // Available narrator voices for the current language (browsers load them
+  // asynchronously — refresh on the voiceschanged event).
+  const [voices, setVoices] = useState<{ uri: string; name: string }[]>(() =>
+    typeof window !== "undefined" ? narratorVoices(lang) : [],
+  );
+  useEffect(() => {
+    const refresh = () => setVoices(narratorVoices(lang));
+    refresh();
+    const s = typeof window !== "undefined" ? window.speechSynthesis : null;
+    s?.addEventListener?.("voiceschanged", refresh);
+    return () => s?.removeEventListener?.("voiceschanged", refresh);
+  }, [lang]);
+
+  const testNarrator = () => {
+    cancelNarrator();
+    void speakLine("test", {
+      volume: prefs.narratorVolume,
+      voiceURI: prefs.narratorVoice,
+    });
+  };
 
   return (
     <ScreenShell>
@@ -174,6 +197,61 @@ export default function SettingsScreen({
             checked={rules.doctorEnabled}
             onChange={(v) => setRules({ doctorEnabled: v })}
           />
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2.5">
+        <SectionTitle>{tr("settings.narratorTitle")}</SectionTitle>
+        <div className="flex flex-col gap-2">
+          <Toggle
+            emoji="🎙️"
+            label={tr("settings.narratorLabel")}
+            hint={tr("settings.narratorHint")}
+            checked={prefs.narratorOn}
+            onChange={(v) => setPrefs({ narratorOn: v })}
+          />
+          {prefs.narratorOn && (
+            <>
+              <div className="rounded-xl border border-white/10 bg-card/70 px-4 py-3">
+                <p className="text-sm font-bold">{tr("settings.narratorVolume")}</p>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={Math.round(prefs.narratorVolume * 100)}
+                  onChange={(e) => setPrefs({ narratorVolume: Number(e.target.value) / 100 })}
+                  className="mt-2 w-full accent-[#ffc457]"
+                  aria-label={tr("settings.narratorVolume")}
+                />
+                <p className="mt-1 text-center text-xs tabular-nums text-muted-foreground">
+                  {Math.round(prefs.narratorVolume * 100)}%
+                </p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-card/70 px-4 py-3">
+                <p className="text-sm font-bold">{tr("settings.narratorVoice")}</p>
+                <select
+                  value={prefs.narratorVoice}
+                  onChange={(e) => setPrefs({ narratorVoice: e.target.value })}
+                  className="mt-2 w-full rounded-lg border border-white/10 bg-card px-2 py-2 text-xs font-bold text-foreground outline-none"
+                  aria-label={tr("settings.narratorVoice")}
+                >
+                  <option value="">{tr("settings.narratorDefaultVoice")}</option>
+                  {voices.map((v) => (
+                    <option key={v.uri} value={v.uri}>
+                      {v.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <button
+                type="button"
+                onClick={testNarrator}
+                className="h-11 w-full rounded-xl border border-accent/40 bg-accent/10 text-sm font-extrabold text-accent transition-all hover:bg-accent/20 active:scale-[0.98]"
+              >
+                {tr("settings.narratorTest")}
+              </button>
+            </>
+          )}
         </div>
       </div>
 

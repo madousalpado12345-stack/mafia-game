@@ -35,6 +35,12 @@ import {
   resolveNight,
   startNextNight,
 } from "@/game/engine";
+import {
+  cancelNarrator,
+  NARRATOR_SCREEN_LINES,
+  speakLine,
+  type NarratorLineKey,
+} from "@/game/narrator";
 import { configureAudio, playSound } from "@/game/sound";
 import { DEFAULT_SETTINGS, loadAppState, saveAppState } from "@/game/storage";
 import { useI18n } from "@/i18n";
@@ -48,7 +54,7 @@ import type {
   Winner,
 } from "@/game/types";
 import { motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 function nightScreenFor(step: NightStep): ScreenName {
@@ -151,6 +157,37 @@ export default function Landing() {
       music: state.settings.prefs.musicOn,
     });
   }, [state.settings.prefs.soundOn, state.settings.prefs.musicOn]);
+
+  /** AI narrator: speaks the night-phase line whenever the screen changes to a
+   *  night step (mafia → doctor → detective, per the game's own role order) or
+   *  to the day. Lines are serialized inside narrator.ts — never two voices at
+   *  once — and absent roles are simply skipped because no screen is shown for
+   *  them. Narrator prefs (on/volume/voice) come from the settings screen. */
+  const prevScreenRef = useRef(state.screen);
+  useEffect(() => {
+    const prev = prevScreenRef.current;
+    prevScreenRef.current = state.screen;
+    if (prev === state.screen) return;
+    if (!state.game || !state.settings.prefs.narratorOn) {
+      cancelNarrator();
+      return;
+    }
+    const line = NARRATOR_SCREEN_LINES[state.screen as string] as NarratorLineKey | undefined;
+    if (line) {
+      void speakLine(line, {
+        volume: state.settings.prefs.narratorVolume,
+        voiceURI: state.settings.prefs.narratorVoice,
+      });
+    } else {
+      cancelNarrator();
+    }
+  }, [
+    state.screen,
+    state.game,
+    state.settings.prefs.narratorOn,
+    state.settings.prefs.narratorVolume,
+    state.settings.prefs.narratorVoice,
+  ]);
 
   /** Screen to continue to after the one-time spectator notice (AI mode). */
   const [spectateNext, setSpectateNext] = useState<ScreenName | null>(null);

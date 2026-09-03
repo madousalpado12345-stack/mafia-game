@@ -17,6 +17,9 @@ export const DEFAULT_SETTINGS: Settings = {
     playerCount: 8,
     playMode: "friends",
     difficulty: "medium",
+    narratorOn: true,
+    narratorVolume: 0.9,
+    narratorVoice: "",
   },
   rules: {
     discussionMinutes: 2,

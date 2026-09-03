@@ -288,6 +288,17 @@ export const en: Dict = {
     continue: "Continue watching 👁️",
   },
 
+  narrator: {
+    nightIntro:
+      "Close your eyes... night has fallen over the village. Wake up, bearers of special roles, one by one.",
+    mafia: "It is now the mafia's turn... open your eyes, mafia.",
+    doctor: "It is now the doctor's turn... open your eyes, doctor.",
+    detective: "It is now the detective's turn... open your eyes, detective.",
+    nightEnd:
+      "The night roles are done... everyone, close your eyes. We are moving on to the morning.",
+    test: "Narrator test... can you hear me clearly?",
+  },
+
   settings: {
     title: "Settings",
     subtitle: "Settings are saved automatically.",
@@ -309,6 +320,13 @@ export const en: Dict = {
     language: "Language",
     darkMode: "Dark mode",
     darkValue: "Always on",
+    narratorTitle: "Voice narrator",
+    narratorLabel: "Voice narrator",
+    narratorHint: "Natural AI voice-over narrated automatically during the night.",
+    narratorVolume: "Narrator volume",
+    narratorVoice: "Narrator voice",
+    narratorDefaultVoice: "Default (best for this device)",
+    narratorTest: "🔊 Test voice",
   },
 
   howTo: {

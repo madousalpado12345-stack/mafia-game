@@ -1,4 +1,5 @@
 import { alivePlayers, deadPlayers, playerById } from "@/game/engine";
+import { waitForIdle } from "@/game/narrator";
 import { localizedRole, useI18n } from "@/i18n";
 import type { GameState } from "@/game/types";
 import { GameTopBar, logEntryText, PlayerStatusRow, PrimaryButton, ScreenShell, SectionTitle, useAutoAdvance } from "./ui";
@@ -45,7 +46,15 @@ export default function DayScreen({
 }) {
   const { t: tr } = useI18n();
   // Spectators see the night result briefly, then discussion starts itself.
-  useAutoAdvance(spectator, onContinue, 2600);
+  // The advance waits for the narrator's closing line to finish, so the next
+  // phase never interrupts the voice-over (still at least ~2.6s total).
+  useAutoAdvance(spectator, () => {
+    const started = Date.now();
+    void waitForIdle().then(() => {
+      const wait = 2600 - (Date.now() - started);
+      setTimeout(onContinue, Math.max(0, wait));
+    });
+  }, 600);
 
   const eliminatedId = game.nightEliminatedId;
   const eliminated = eliminatedId ? playerById(game.players, eliminatedId) : null;
