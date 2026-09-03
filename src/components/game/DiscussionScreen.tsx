@@ -1,5 +1,6 @@
 import { alivePlayers } from "@/game/engine";
 import { playSound } from "@/game/sound";
+import { useI18n } from "@/i18n";
 import type { GameState } from "@/game/types";
 import { cn } from "@/lib/utils";
 import { useEffect, useRef, useState } from "react";
@@ -27,6 +28,7 @@ export default function DiscussionScreen({
   onExit: () => void;
   onSave: () => void;
 }) {
+  const { t: tr } = useI18n();
   const [running, setRunning] = useState(true);
   const [ended, setEnded] = useState(false);
   const finishedRef = useRef(false);
@@ -87,12 +89,12 @@ export default function DiscussionScreen({
 
   return (
     <div className="flex flex-1 flex-col gap-5">
-      <GameTopBar title="النقاش 🗣️" onExit={onExit} onSave={onSave} />
+      <GameTopBar title={tr("discussion.title")} onExit={onExit} onSave={onSave} />
 
       <div className="text-center">
-        <h1 className="text-3xl font-black text-glow-gold">مرحلة النقاش</h1>
-        <p className="mx-auto mt-2 max-w-[300px] text-sm leading-6 text-muted-foreground">
-          ناقشوا الأحداث وحاولوا اكتشاف المافيا قبل التصويت.
+        <h1 className="text-3xl font-black text-glow-gold">{tr("discussion.heading")}</h1>
+        <p className="mx-auto mt-2 max-w-[320px] text-sm leading-6 text-muted-foreground">
+          {tr("discussion.sub")}
         </p>
       </div>
 
@@ -105,7 +107,7 @@ export default function DiscussionScreen({
         )}
       >
         <p className="text-xs font-extrabold text-muted-foreground">
-          {ended ? "انتهى وقت النقاش — جارٍ الانتقال إلى التصويت..." : "الوقت المتبقي"}
+          {ended ? tr("discussion.endedTransition") : tr("discussion.timeLeft")}
         </p>
         <p
           className={cn(
@@ -122,7 +124,7 @@ export default function DiscussionScreen({
           />
         </div>
         <p className="mt-2 text-xs text-muted-foreground">
-          {alivePlayers(game.players).length} لاعبين أحياء
+          {tr("discussion.alivePlayers", { n: alivePlayers(game.players).length })}
         </p>
       </div>
 
@@ -141,7 +143,7 @@ export default function DiscussionScreen({
                     : "border-white/10 bg-card/70 text-muted-foreground hover:border-accent/50",
                 )}
               >
-                {m} دقيقة
+                {tr("discussion.minutes", { n: m })}
               </button>
             ))}
           </div>
@@ -154,7 +156,7 @@ export default function DiscussionScreen({
               }}
               className="h-12 flex-1 rounded-xl border border-white/10 bg-card/70 text-sm font-extrabold transition-all hover:border-accent/40"
             >
-              {running ? "⏸ إيقاف مؤقت" : "▶️ متابعة"}
+              {running ? tr("discussion.pause") : tr("discussion.resume")}
             </button>
             <button
               type="button"
@@ -164,7 +166,7 @@ export default function DiscussionScreen({
               }}
               className="h-12 flex-1 rounded-xl border border-white/10 bg-card/70 text-sm font-extrabold text-muted-foreground transition-all hover:border-primary/50 hover:text-foreground"
             >
-              إنهاء النقاش الآن
+              {tr("discussion.endNow")}
             </button>
           </div>
         </>

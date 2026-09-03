@@ -1,5 +1,6 @@
 import { aiNamesFor, PERSONAS, personaTrait } from "@/game/personas";
 import { randomNames } from "@/game/names";
+import { useI18n } from "@/i18n";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { GhostButton, PrimaryButton, ScreenShell, SectionTitle } from "./ui";
@@ -17,6 +18,7 @@ export default function NamesScreen({
   onBack: () => void;
   onStart: (names: string[]) => void;
 }) {
+  const { t: tr } = useI18n();
   const [names, setNames] = useState<string[]>(
     () => initialNames && initialNames.length === count ? initialNames : Array(count).fill(""),
   );
@@ -48,11 +50,11 @@ export default function NamesScreen({
   const handleRandomFill = () => {
     if (aiMode) {
       setNames([randomNames(1)[0], ...Array(count - 1).fill("")]);
-      toast.info("تم توليد اسم عشوائي لك");
+      toast.info(tr("names.randomYou"));
       return;
     }
     fillRandom();
-    toast.info("تم توليد أسماء عشوائية");
+    toast.info(tr("names.randomDone"));
   };
 
   if (aiMode) {
@@ -65,30 +67,29 @@ export default function NamesScreen({
             onClick={onBack}
             className="mb-3 text-sm font-bold text-muted-foreground hover:text-foreground"
           >
-            → رجوع
+            {tr("common.back")}
           </button>
-          <h1 className="text-2xl font-black">من أنت؟</h1>
+          <h1 className="text-2xl font-black">{tr("names.titleAi")}</h1>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
-            أنت اللاعب الحقيقي الوحيد — سيرافقك {count - 1} من شخصيات الذكاء
-            الاصطناعي. أدخل اسمك:
+            {tr("names.subtitleAi", { n: count - 1 })}
           </p>
         </div>
 
-        <SectionTitle>اسمك</SectionTitle>
+        <SectionTitle>{tr("names.yourName")}</SectionTitle>
         <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-card/70 px-4 py-2">
           <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/20 text-sm font-black text-primary">
-            أنت
+            {tr("names.you")}
           </span>
           <input
             value={names[0]}
             maxLength={18}
             onChange={(e) => setNames((prev) => [e.target.value, ...prev.slice(1)])}
-            placeholder="اسمك"
+            placeholder={tr("names.yourName")}
             className="h-10 w-full bg-transparent text-sm font-bold outline-none placeholder:text-muted-foreground/60"
           />
         </div>
 
-        <SectionTitle>شخصيات الذكاء الاصطناعي ({count - 1})</SectionTitle>
+        <SectionTitle>{tr("names.aiChars", { n: count - 1 })}</SectionTitle>
         <div className="flex flex-col gap-2">
           {roster.map((n, i) => {
             const persona = PERSONAS[i % PERSONAS.length];
@@ -105,9 +106,9 @@ export default function NamesScreen({
         </div>
 
         <div className="mt-2 flex flex-col gap-2">
-          <PrimaryButton onClick={start}>بدء اللعبة 🤖</PrimaryButton>
-          <GhostButton onClick={handleRandomFill}>🎲 اسم عشوائي</GhostButton>
-          <GhostButton onClick={onBack}>رجوع</GhostButton>
+          <PrimaryButton onClick={start}>{tr("names.startAi")}</PrimaryButton>
+          <GhostButton onClick={handleRandomFill}>{tr("names.randomName")}</GhostButton>
+          <GhostButton onClick={onBack}>{tr("common.backShort")}</GhostButton>
         </div>
       </ScreenShell>
     );
@@ -121,15 +122,15 @@ export default function NamesScreen({
           onClick={onBack}
           className="mb-3 text-sm font-bold text-muted-foreground hover:text-foreground"
         >
-          → رجوع
+          {tr("common.back")}
         </button>
-        <h1 className="text-2xl font-black">أسماء اللاعبين</h1>
+        <h1 className="text-2xl font-black">{tr("names.titleFriends")}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          أدخل اسمًا لكل لاعب — {count} لاعبين على نفس الهاتف.
+          {tr("names.subtitleFriends", { n: count })}
         </p>
       </div>
 
-      <SectionTitle>اللاعبون</SectionTitle>
+      <SectionTitle>{tr("names.players")}</SectionTitle>
       <div className="flex flex-col gap-2">
         {names.map((n, i) => (
           <div
@@ -145,7 +146,7 @@ export default function NamesScreen({
               onChange={(e) =>
                 setNames((prev) => prev.map((v, j) => (j === i ? e.target.value : v)))
               }
-              placeholder={`اللاعب ${i + 1}`}
+              placeholder={tr("names.playerPlaceholder", { n: i + 1 })}
               className="h-10 w-full bg-transparent text-sm font-bold outline-none placeholder:text-muted-foreground/60"
             />
           </div>
@@ -153,9 +154,9 @@ export default function NamesScreen({
       </div>
 
       <div className="mt-2 flex flex-col gap-2">
-        <PrimaryButton onClick={start}>بدء توزيع الأدوار 🎴</PrimaryButton>
-        <GhostButton onClick={handleRandomFill}>🎲 أسماء عشوائية</GhostButton>
-        <GhostButton onClick={onBack}>رجوع</GhostButton>
+        <PrimaryButton onClick={start}>{tr("names.startFriends")}</PrimaryButton>
+        <GhostButton onClick={handleRandomFill}>{tr("names.randomNames")}</GhostButton>
+        <GhostButton onClick={onBack}>{tr("common.backShort")}</GhostButton>
       </div>
     </ScreenShell>
   );

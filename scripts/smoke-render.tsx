@@ -5,6 +5,8 @@ import { renderToString } from "react-dom/server";
 import { createGame, startNextNight } from "@/game/engine";
 import { buildDiscussionScript, applyAiNightActions } from "@/game/ai";
 import { DEFAULT_SETTINGS } from "@/game/storage";
+import { LanguageProvider } from "@/i18n";
+import type { Lang } from "@/i18n";
 import type { GameState } from "@/game/types";
 import { createElement } from "react";
 
@@ -173,28 +175,41 @@ const cases: [string, React.ReactElement][] = [
   ],
 ];
 
+const LANGS: Lang[] = ["ar", "fr", "en"];
 let failed = 0;
 for (const [name, el] of cases) {
-  try {
-    const html = renderToString(el);
-    if (!html || html.length < 10) throw new Error("empty render output");
-    console.log(`OK   ${name} (${html.length} chars)`);
-  } catch (err) {
-    failed += 1;
-    console.error(`FAIL ${name} → ${(err as Error).message}`);
+  for (const lang of LANGS) {
+    try {
+      const html = renderToString(
+        createElement(LanguageProvider, { initialLang: lang }, el),
+      );
+      if (!html || html.length < 10) throw new Error("empty render output");
+      console.log(`OK   ${name} [${lang}] (${html.length} chars)`);
+    } catch (err) {
+      failed += 1;
+      console.error(`FAIL ${name} [${lang}] → ${(err as Error).message}`);
+    }
   }
 }
 
-// --- WinScreen with every winner ---
+// --- WinScreen with every winner, every language ---
 for (const winner of ["citizens", "mafia", "jester"] as const) {
-  const g = structuredClone(aiGame);
-  g.winner = winner;
-  try {
-    renderToString(createElement(WinScreen, { game: g, onSamePlayers: noop, onNewSetup: noop, onMenu: noop }));
-    console.log(`OK   WinScreen (winner=${winner})`);
-  } catch (err) {
-    failed += 1;
-    console.error(`FAIL WinScreen (${winner}) → ${(err as Error).message}`);
+  for (const lang of LANGS) {
+    const g = structuredClone(aiGame);
+    g.winner = winner;
+    try {
+      renderToString(
+        createElement(
+          LanguageProvider,
+          { initialLang: lang },
+          createElement(WinScreen, { game: g, onSamePlayers: noop, onNewSetup: noop, onMenu: noop }),
+        ),
+      );
+      console.log(`OK   WinScreen (winner=${winner}) [${lang}]`);
+    } catch (err) {
+      failed += 1;
+      console.error(`FAIL WinScreen (${winner}) [${lang}] → ${(err as Error).message}`);
+    }
   }
 }
 

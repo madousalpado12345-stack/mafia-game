@@ -90,11 +90,27 @@ export interface VoteOutcome {
   tiedIds: string[];
 }
 
+/** Kind of a public game-log event. `text` holds the legacy Arabic string for
+ *  saves written before logs were structured; new entries carry `kind`. */
+export type LogKind =
+  | "nightKill"
+  | "noNightKill"
+  | "dayEliminate"
+  | "dayEliminateReveal"
+  | "tie"
+  | "noDayEliminate";
+
 export interface LogEntry {
   id: string;
   night: number;
   phase: "night" | "day";
-  text: string;
+  kind?: LogKind;
+  /** Eliminated player — present for nightKill / dayEliminate(+Reveal). */
+  playerId?: string;
+  /** Role of the eliminated player — present for dayEliminateReveal. */
+  role?: RoleId;
+  /** Legacy Arabic text (old saves) — rendered when `kind` is absent. */
+  text?: string;
 }
 
 /** Private knowledge + memory of one AI player. Everything here is strictly

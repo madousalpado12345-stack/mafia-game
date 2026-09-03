@@ -4,7 +4,7 @@ import {
   nightSequence,
   playerById,
 } from "@/game/engine";
-import { ROLES } from "@/game/roles";
+import { localizedRole, useI18n } from "@/i18n";
 import type { GameState, NightStep } from "@/game/types";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -38,6 +38,7 @@ function NightIntro({
   spectator?: boolean;
   onStartNight: () => void;
 }) {
+  const { t: tr } = useI18n();
   const steps = nightSequence(game);
   // Spectators: let the AI night play out without waiting for a tap.
   useAutoAdvance(spectator, onStartNight, 2200);
@@ -46,20 +47,19 @@ function NightIntro({
       <div className="flex-1" />
       <div className="text-center">
         <div className="animate-float text-8xl">🌙</div>
-        <h1 className="mt-4 text-4xl font-black text-glow">أغمضوا أعينكم</h1>
-        <p className="mx-auto mt-3 max-w-[290px] text-sm leading-7 text-muted-foreground">
-          حلّ الليل بهدوء. سيستيقظ أصحاب الأدوار الخاصة واحدًا تلو الآخر لتنفيذ
-          قدراتهم — مرّروا الهاتف بينهم سرًا ولا تتجسسوا.
+        <h1 className="mt-4 text-4xl font-black text-glow">{tr("night.introTitle")}</h1>
+        <p className="mx-auto mt-3 max-w-[310px] text-sm leading-7 text-muted-foreground">
+          {tr("night.introText")}
         </p>
       </div>
 
       <div className="mt-6 rounded-2xl border border-white/10 bg-card/70 p-4">
         <p className="text-center text-xs font-extrabold text-muted-foreground">
-          من سيتحرك هذه الليلة
+          {tr("night.whoMoves")}
         </p>
         <div className="mt-3 flex justify-center gap-4">
           {steps.map((s) => {
-            const r = ROLES[s];
+            const r = localizedRole(s);
             return (
               <div key={s} className="text-center">
                 <div className="text-3xl">{r.emoji}</div>
@@ -75,8 +75,10 @@ function NightIntro({
       </div>
 
       <div className="flex-1" />
-      <PrimaryButton onClick={onStartNight}>بدء الليل 🌙</PrimaryButton>
-      <p className="text-center text-xs text-muted-foreground">الليلة رقم {game.night}</p>
+      <PrimaryButton onClick={onStartNight}>{tr("night.startNight")}</PrimaryButton>
+      <p className="text-center text-xs text-muted-foreground">
+        {tr("night.nightNumber", { n: game.night })}
+      </p>
     </ScreenShell>
   );
 }
@@ -103,8 +105,9 @@ function NightAction({
   onExit: () => void;
   onSave: () => void;
 }) {
+  const { t: tr } = useI18n();
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const r = ROLES[step];
+  const r = localizedRole(step);
 
   const alive = alivePlayers(game.players);
   const actor = alive.find((p) => p.role === step);
@@ -118,17 +121,16 @@ function NightAction({
 
   if (step === "mafia") {
     candidates = alive
-      .filter((p) => !(ROLES[p.role].team === "mafia"))
+      .filter((p) => !(localizedRole(p.role).team === "mafia"))
       .map((p) => ({
         id: p.id,
         label: p.name,
       }));
-    handoffName = "المافيا";
-    handoffNote =
-      "مرّر الهاتف بين أعضاء المافيا واتفقوا معًا على هدف واحد. لا تختاروا لاعبًا من المافيا.";
-    ctaLabel = "اختيار الهدف 🔪";
-    heading = "افتحوا أعينكم يا مافيا";
-    help = "اتفقوا على لاعب واحد لإخراجه من اللعبة هذه الليلة.";
+    handoffName = tr("night.mafiaHandoff");
+    handoffNote = tr("night.mafiaNote");
+    ctaLabel = tr("night.mafiaCta");
+    heading = tr("night.mafiaHeading");
+    help = tr("night.mafiaHelp");
   } else if (step === "doctor") {
     // All faces look the same — the doctor must not learn who the mafia are.
     candidates = alive
@@ -137,13 +139,13 @@ function NightAction({
         id: p.id,
         label: p.name,
       }));
-    handoffName = "الطبيب";
-    handoffNote = "اختر اللاعب الذي تريد حمايته من استهداف المافيا.";
-    ctaLabel = "حماية هذا اللاعب ❤️";
-    heading = "افتحوا أعينكم يا طبيب";
+    handoffName = tr("night.doctorHandoff");
+    handoffNote = tr("night.doctorNote");
+    ctaLabel = tr("night.doctorCta");
+    heading = tr("night.doctorHeading");
     help = game.settings.doctorCanHealSelf
-      ? "يمكنك حماية نفسك أيضًا إذا أردت."
-      : "لا يمكنك حماية نفسك في هذه الجولة.";
+      ? tr("night.doctorHelpSelf")
+      : tr("night.doctorHelpNoSelf");
   } else {
     candidates = alive
       .filter((p) => p.id !== actor?.id)
@@ -151,11 +153,11 @@ function NightAction({
         id: p.id,
         label: p.name,
       }));
-    handoffName = "المحقق";
-    handoffNote = "اختر لاعبًا لفحصه — ستعرف النتيجة وحدك ولن تظهر للآخرين.";
-    ctaLabel = "التحقيق مع هذا اللاعب 🕵️";
-    heading = "افتحوا أعينكم يا محقق";
-    help = "ستعرف هل هو من المافيا أم لا، ثم أخفِ النتيجة فورًا.";
+    handoffName = tr("night.detectiveHandoff");
+    handoffNote = tr("night.detectiveNote");
+    ctaLabel = tr("night.detectiveCta");
+    heading = tr("night.detectiveHeading");
+    help = tr("night.detectiveHelp");
   }
 
   // Detective already chose → show private result
@@ -164,14 +166,14 @@ function NightAction({
     const isMafia = game.detectiveResult.isMafia;
     return (
       <ScreenShell>
-        <GameTopBar title={`الليلة ${game.night} — المحقق`} onExit={onExit} onSave={onSave} />
+        <GameTopBar title={tr("night.titleWithRole", { n: game.night, role: r.name })} onExit={onExit} onSave={onSave} />
         <StepDots current={stepIndex} total={totalSteps} />
         <div className="flex-1" />
         <div className="text-center">
           <div className="text-6xl">🕵️</div>
-          <h2 className="mt-3 text-xl font-black">نتيجة التحقيق</h2>
+          <h2 className="mt-3 text-xl font-black">{tr("night.resultTitle")}</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            فحصت: {target.name}
+            {tr("night.checked", { name: target.name })}
           </p>
         </div>
         <div
@@ -189,15 +191,15 @@ function NightAction({
               isMafia ? "text-red-400" : "text-emerald-400",
             )}
           >
-            {isMafia ? "هذا اللاعب من المافيا" : "هذا اللاعب ليس من المافيا"}
+            {isMafia ? tr("night.isMafia") : tr("night.notMafia")}
           </p>
         </div>
         <p className="mt-4 text-center text-xs text-muted-foreground">
-          لا تشارك النتيجة مع أحد الآن — استخدمها بذكاء في النقاش.
+          {tr("night.dontShare")}
         </p>
         <div className="flex-1" />
         <PrimaryButton onClick={onDetectiveHide} className="bg-secondary text-secondary-foreground shadow-none hover:bg-secondary/80">
-          إخفاء النتيجة
+          {tr("night.hideResult")}
         </PrimaryButton>
       </ScreenShell>
     );
@@ -205,7 +207,7 @@ function NightAction({
 
   return (
     <ScreenShell>
-      <GameTopBar title={`الليلة ${game.night} — ${r.name}`} onExit={onExit} onSave={onSave} />
+      <GameTopBar title={tr("night.titleWithRole", { n: game.night, role: r.name })} onExit={onExit} onSave={onSave} />
       <StepDots current={stepIndex} total={totalSteps} />
 
       {/* الجملة الخاصة بالدور أولًا، ثم قائمة اللاعبين للاختيار. */}
@@ -216,13 +218,15 @@ function NightAction({
 
       {step === "mafia" && mafiaTeammates(game, actor?.id ?? "").length > 0 && (
         <p className="text-center text-xs font-bold text-red-400">
-          أنتم المافيا: {[actor?.name, ...mafiaTeammates(game, actor?.id ?? "").map((m) => m.name)].join("، ")}
+          {tr("night.mafiaTeammatesLine", {
+            names: [actor?.name, ...mafiaTeammates(game, actor?.id ?? "").map((m) => m.name)].join(tr("common.listSep")),
+          })}
         </p>
       )}
 
       {aiMode ? (
         <div className="rounded-2xl border border-accent/40 bg-accent/10 p-4 text-center">
-          <p className="text-sm font-black text-accent">أنت: {handoffName}</p>
+          <p className="text-sm font-black text-accent">{handoffName}</p>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">{handoffNote}</p>
         </div>
       ) : (
@@ -233,7 +237,7 @@ function NightAction({
         items={candidates}
         selectedId={selectedId}
         onSelect={setSelectedId}
-        empty="لا يوجد مرشحون متاحون."
+        empty={tr("night.empty")}
       />
 
       <div className="mt-2 flex flex-col gap-2">

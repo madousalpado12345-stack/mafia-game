@@ -1,6 +1,6 @@
 import { alivePlayers } from "@/game/engine";
 import { personaTrait } from "@/game/personas";
-import { ROLES } from "@/game/roles";
+import { localizedRole, useI18n } from "@/i18n";
 import type { GameState } from "@/game/types";
 import { cn } from "@/lib/utils";
 import {
@@ -10,6 +10,7 @@ import {
   SectionTitle,
   formatNights,
   formatSurvivors,
+  logEntryText,
 } from "./ui";
 
 export default function WinScreen({
@@ -23,11 +24,12 @@ export default function WinScreen({
   onNewSetup: () => void;
   onMenu: () => void;
 }) {
+  const { t: tr } = useI18n();
   const jesterWin = game.winner === "jester";
   const mafiaWin = game.winner === "mafia";
   const alive = alivePlayers(game.players);
   // Only in AI mode is there a single human — friends mode is pass-and-play,
-  // so the "أنت" badge must never appear there.
+  // so the "you" badge must never appear there.
   const aiMode = game.playMode === "ai";
 
   return (
@@ -44,7 +46,7 @@ export default function WinScreen({
         >
           {jesterWin ? "🎭" : mafiaWin ? "🔪" : "🏆"}
         </div>
-        <p className="mt-4 text-sm font-extrabold text-muted-foreground">انتهت اللعبة</p>
+        <p className="mt-4 text-sm font-extrabold text-muted-foreground">{tr("win.ended")}</p>
         <h1
           className={`mt-2 text-4xl font-black leading-tight ${
             jesterWin
@@ -54,36 +56,36 @@ export default function WinScreen({
                 : "text-glow-gold text-accent"
           }`}
         >
-          {jesterWin ? "فاز المهرج!" : mafiaWin ? "فازت المافيا!" : "فاز المواطنون!"}
+          {jesterWin ? tr("win.jesterWon") : mafiaWin ? tr("win.mafiaWon") : tr("win.citizensWon")}
         </h1>
-        <p className="mx-auto mt-3 max-w-[300px] text-sm leading-6 text-muted-foreground">
+        <p className="mx-auto mt-3 max-w-[320px] text-sm leading-6 text-muted-foreground">
           {jesterWin
-            ? "تم التصويت على المهرج وإخراجه — لكنه حقق هدفه المنشود وفاز وحده بالمباراة!"
+            ? tr("win.jesterDesc")
             : mafiaWin
-              ? "سيطرت المافيا على المباراة تمامًا — لم يبقَ سوى لاعب واحد من غير المافيا."
-              : "تمكن المواطنون من كشف المافيا وإخراجها جميعًا من اللعبة."}
+              ? tr("win.mafiaDesc")
+              : tr("win.citizensDesc")}
         </p>
       </div>
 
       <div className="rounded-2xl border border-white/10 bg-card/70 p-4 text-center">
         <p className="text-xs font-extrabold text-muted-foreground">
-          استمرت اللعبة {formatNights(game.night)}
+          {tr("win.lasted", { nights: formatNights(game.night) })}
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
-          نجا {formatSurvivors(alive.length)} في النهاية
+          {tr("win.survived", { n: formatSurvivors(alive.length) })}
         </p>
       </div>
 
       <div className="flex flex-col gap-2.5">
-        <SectionTitle>النتيجة النهائية</SectionTitle>
+        <SectionTitle>{tr("win.finalResults")}</SectionTitle>
         <div className="grid grid-cols-[1fr_auto_auto] items-center gap-x-3 rounded-xl border border-white/10 bg-card/40 px-4 py-1.5 text-[10px] font-extrabold text-muted-foreground">
-          <span>اللاعب</span>
-          <span>{aiMode ? "الشخصية / الدور" : "الدور"}</span>
-          <span>النتيجة</span>
+          <span>{tr("win.playerCol")}</span>
+          <span>{aiMode ? tr("win.roleColAi") : tr("win.roleCol")}</span>
+          <span>{tr("win.resultCol")}</span>
         </div>
         <div className="flex flex-col gap-2">
           {game.players.map((p) => {
-            const r = ROLES[p.role];
+            const r = localizedRole(p.role);
             const dead = p.status === "dead";
             const trait = personaTrait(game.aiStates?.[p.id]?.personalityId ?? "smart");
             return (
@@ -106,7 +108,7 @@ export default function WinScreen({
                     </span>
                   ) : aiMode ? (
                     <span className="rounded-md bg-white/5 px-2 py-0.5 text-[11px] font-bold text-accent">
-                      أنت
+                      {tr("win.you")}
                     </span>
                   ) : null}
                   <span
@@ -122,7 +124,7 @@ export default function WinScreen({
                     dead ? "bg-white/5 text-muted-foreground" : "bg-emerald-500/10 text-emerald-400",
                   )}
                 >
-                  {dead ? "خارج 👻" : "حي ✓"}
+                  {dead ? tr("win.out") : tr("win.aliveShort")}
                 </span>
               </div>
             );
@@ -132,24 +134,25 @@ export default function WinScreen({
 
       <details className="group rounded-xl border border-white/10 bg-card/70">
         <summary className="cursor-pointer list-none px-4 py-3 text-sm font-bold text-accent">
-          📜 سجل الأحداث
+          {tr("day.logTitle")}
         </summary>
         <div className="flex flex-col gap-2 border-t border-white/10 px-4 py-3">
           {game.log.map((entry) => (
             <p key={entry.id} className="text-xs leading-5 text-muted-foreground">
               <span className="font-extrabold text-accent">
-                الليلة {entry.night} — {entry.phase === "night" ? "الليل" : "النهار"}:
+                {tr("common.nightX", { n: entry.night })} —{" "}
+                {entry.phase === "night" ? tr("common.nightPhase") : tr("common.dayPhase")}:
               </span>{" "}
-              {entry.text}
+              {logEntryText(entry, game.players)}
             </p>
           ))}
         </div>
       </details>
 
       <div className="mt-2 flex flex-col gap-2">
-        <PrimaryButton onClick={onSamePlayers}>🔄 لعبة جديدة بنفس اللاعبين</PrimaryButton>
-        <GhostButton onClick={onNewSetup}>🎲 لعبة جديدة بأدوار عشوائية</GhostButton>
-        <GhostButton onClick={onMenu}>🏠 العودة إلى القائمة الرئيسية</GhostButton>
+        <PrimaryButton onClick={onSamePlayers}>{tr("win.replaySame")}</PrimaryButton>
+        <GhostButton onClick={onNewSetup}>{tr("win.replayRandom")}</GhostButton>
+        <GhostButton onClick={onMenu}>{tr("win.toMenu")}</GhostButton>
       </div>
     </ScreenShell>
   );

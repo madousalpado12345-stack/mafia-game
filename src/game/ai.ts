@@ -1,6 +1,7 @@
 /** AI players engine — every decision is limited to what the player's role
  *  actually allows them to know (no cheating). Pure logic over GameState. */
-import { PERSONAS, personaById } from "./personas";
+import { PERSONAS, phrasesForPersona, personaById } from "./personas";
+import { t } from "@/i18n";
 import { ROLES, shuffle } from "./roles";
 import type {
   AiState,
@@ -400,6 +401,10 @@ function pick(arr: string[]): string {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
+function everyoneLabel(): string {
+  return t("common.everyone");
+}
+
 /** Builds the day's AI conversation and feeds it back into each AI's memory. */
 export function buildDiscussionScript(game: GameState): Utterance[] {
   const states = aiStates(game);
@@ -484,7 +489,7 @@ export function buildDiscussionScript(game: GameState): Utterance[] {
   const openingSpeakers = talkFirst.slice(0, alive.length >= 6 ? 2 : 1);
   for (const s of openingSpeakers) {
     const persona = personaById(states[s.id]?.personalityId ?? "smart");
-    const pool = victimId ? persona.phrases.reactNight : persona.phrases.reactNoKill;
+    const pool = victimId ? phrasesForPersona(persona.id).reactNight : phrasesForPersona(persona.id).reactNoKill;
     say(s.id, fill(pick(pool), { victim: victimId ? name(victimId) : "", count: String(Math.max(1, Math.round(100 / game.players.length))) }));
   }
 
@@ -509,7 +514,7 @@ export function buildDiscussionScript(game: GameState): Utterance[] {
         (q) => (st ? sc(st, st.trustScores, q.id, 26) : 26),
         8,
       );
-      say(speaker.id, fill(pick(persona.phrases.bait), { target: target ? name(target.id) : "الجميع" }));
+      say(speaker.id, fill(pick(phrasesForPersona(persona.id).bait), { target: target ? name(target.id) : everyoneLabel() }));
       continue;
     }
 
@@ -520,14 +525,14 @@ export function buildDiscussionScript(game: GameState): Utterance[] {
       );
       if (attackedTeammate && !responded.has(speaker.id)) {
         responded.add(speaker.id);
-        say(speaker.id, fill(pick(persona.phrases.defend), { accuser: name(attackedTeammate.accuserId), target: name(attackedTeammate.accusedId) }));
+        say(speaker.id, fill(pick(phrasesForPersona(persona.id).defend), { accuser: name(attackedTeammate.accuserId), target: name(attackedTeammate.accusedId) }));
         continue;
       }
     }
 
     const target = accusationTarget(speaker, isMafiaSpeaker);
     if (!target) continue;
-    say(speaker.id, fill(pick(persona.phrases.accuse), { target: name(target.id), accuser: name(speaker.id) }));
+    say(speaker.id, fill(pick(phrasesForPersona(persona.id).accuse), { target: name(target.id), accuser: name(speaker.id) }));
     recordAccusation(speaker.id, target.id);
   }
 
@@ -540,7 +545,7 @@ export function buildDiscussionScript(game: GameState): Utterance[] {
     const persona = personaById(states[accused.id]?.personalityId ?? "smart");
     const useCounter =
       persona.id === "aggressive" ? Math.random() < 0.65 : Math.random() < 0.3;
-    const pool = useCounter ? persona.phrases.counter : persona.phrases.defend;
+    const pool = useCounter ? phrasesForPersona(persona.id).counter : phrasesForPersona(persona.id).defend;
     say(accused.id, fill(pick(pool), { accuser: name(acc.accuserId), target: name(accused.id) }));
     recordDefense(acc.accuserId, accused.id);
   }
@@ -564,7 +569,7 @@ export function buildDiscussionScript(game: GameState): Utterance[] {
       const persona = personaById(st?.personalityId ?? "smart");
       say(
         s.id,
-        fill(pick(persona.phrases.analyze), {
+        fill(pick(phrasesForPersona(persona.id).analyze), {
           voter: name(vote.voterId),
           target: name(vote.targetId!),
           accuser: name(vote.voterId),
@@ -583,7 +588,7 @@ export function buildDiscussionScript(game: GameState): Utterance[] {
     const closer = closers[0];
     if (closer) {
       const persona = personaById(states[closer.id]?.personalityId ?? "smart");
-      say(closer.id, fill(pick(persona.phrases.close), { target: "", accuser: "" }));
+      say(closer.id, fill(pick(phrasesForPersona(persona.id).close), { target: "", accuser: "" }));
     }
   }
 

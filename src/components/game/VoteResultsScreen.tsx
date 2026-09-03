@@ -1,5 +1,5 @@
 import { nameOf, playerById } from "@/game/engine";
-import { ROLES } from "@/game/roles";
+import { localizedRole, useI18n } from "@/i18n";
 import type { GameState } from "@/game/types";
 import { cn } from "@/lib/utils";
 import {
@@ -31,6 +31,7 @@ export default function VoteResultsScreen({
   onExit: () => void;
   onSave: () => void;
 }) {
+  const { t: tr } = useI18n();
   const outcome = game.lastVoteOutcome;
   const isTie = outcome?.kind === "tie";
 
@@ -48,11 +49,11 @@ export default function VoteResultsScreen({
   const tallyCard = (
     <div className="rounded-2xl border border-white/10 bg-card/70 p-4">
       <p className="mb-3 text-center text-xs font-extrabold text-muted-foreground">
-        نتيجة الأصوات
+        {tr("voteResults.tally")}
       </p>
       <div className="flex flex-col gap-2">
         {(outcome?.rows ?? []).map((row) => {
-          const label = row.playerId ? nameOf(game.players, row.playerId) : "لا أحد (امتناع)";
+          const label = row.playerId ? nameOf(game.players, row.playerId) : tr("voteResults.nobodyAbstain");
           const isTop =
             row.playerId !== null && outcome?.kind === "eliminate" && row.playerId === outcome.eliminatedId;
           return (
@@ -78,12 +79,12 @@ export default function VoteResultsScreen({
 
   return (
     <ScreenShell>
-      <GameTopBar title="نتيجة التصويت 🗳️" onExit={onExit} onSave={onSave} />
+      <GameTopBar title={tr("voteResults.title")} onExit={onExit} onSave={onSave} />
 
       <div className="text-center">
         <div className="text-7xl">{isTie ? "⚖️" : "🗳️"}</div>
         <h1 className="mt-3 text-3xl font-black text-glow">
-          {isTie ? "حدث تعادل!" : "نتيجة التصويت"}
+          {isTie ? tr("voteResults.tieTitle") : tr("voteResults.resultTitle")}
         </h1>
       </div>
 
@@ -93,16 +94,18 @@ export default function VoteResultsScreen({
         <div className="rounded-2xl border border-red-500/40 bg-red-500/10 p-5 text-center">
           <div className="text-4xl">⚰️</div>
           <h2 className="mt-2 text-xl font-black text-red-400">
-            تم التصويت ضد {nameOf(game.players, outcome.eliminatedId)}
+            {tr("voteResults.eliminatedByVote", { name: nameOf(game.players, outcome.eliminatedId) })}
           </h2>
           {game.settings.revealRoleOnElimination && (
             <p className="mt-2 text-sm font-bold text-muted-foreground">
-              كان دوره: {ROLES[playerById(game.players, outcome.eliminatedId).role].emoji}{" "}
-              {ROLES[playerById(game.players, outcome.eliminatedId).role].name}
+              {tr("voteResults.wasRole", {
+                emoji: localizedRole(playerById(game.players, outcome.eliminatedId).role).emoji,
+                role: localizedRole(playerById(game.players, outcome.eliminatedId).role).name,
+              })}
             </p>
           )}
           <p className="mt-2 text-xs text-muted-foreground">
-            {nameOf(game.players, outcome.eliminatedId)} خارج اللعبة الآن 👻
+            {tr("voteResults.isOut", { name: nameOf(game.players, outcome.eliminatedId) })}
           </p>
         </div>
       )}
@@ -112,8 +115,8 @@ export default function VoteResultsScreen({
           <div className="text-4xl">🤝</div>
           <h2 className="mt-2 text-xl font-black text-emerald-400">
             {outcome.kind === "abstain"
-              ? "قرر الجميع عدم إخراج أحد"
-              : "لم يُسجَّل أي تصويت ضد أحد"}
+              ? tr("voteResults.allAbstain")
+              : tr("voteResults.noVotesTitle")}
           </h2>
         </div>
       )}
@@ -121,15 +124,15 @@ export default function VoteResultsScreen({
       {isTie ? (
         <div className="flex flex-col gap-2">
           <p className="text-center text-sm text-muted-foreground">
-            حصل لاعبان أو أكثر على نفس عدد الأصوات. اختار المضيف ما يحدث:
+            {tr("voteResults.tieSub")}
           </p>
           {canRevote && (
-            <PrimaryButton onClick={onRevote}>🔁 إعادة التصويت</PrimaryButton>
+            <PrimaryButton onClick={onRevote}>{tr("voteResults.revote")}</PrimaryButton>
           )}
-          <GhostButton onClick={onNoEliminate}>عدم إخراج أي لاعب</GhostButton>
+          <GhostButton onClick={onNoEliminate}>{tr("voteResults.noEliminate")}</GhostButton>
         </div>
       ) : (
-        <PrimaryButton onClick={onContinue}>متابعة إلى الليلة القادمة 🌙</PrimaryButton>
+        <PrimaryButton onClick={onContinue}>{tr("voteResults.nextNight")}</PrimaryButton>
       )}
     </ScreenShell>
   );

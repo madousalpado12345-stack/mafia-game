@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
-import { DIFFICULTY_META, difficultyMeta, safeDifficulty } from "@/game/ai";
-import { ROLES, effectiveMafiaCount, maxMafiaCount, recommendedMafiaCount } from "@/game/roles";
+import { DIFFICULTY_META, safeDifficulty } from "@/game/ai";
+import { effectiveMafiaCount, maxMafiaCount, recommendedMafiaCount } from "@/game/roles";
+import { localizedRole, useI18n } from "@/i18n";
 import type { Difficulty, RoleId, Settings } from "@/game/types";
 import type { ReactNode } from "react";
 import { toast } from "sonner";
@@ -88,7 +89,8 @@ function RoleToggleCard({
   enabled?: boolean;
   onToggle?: () => void;
 }) {
-  const r = ROLES[roleId];
+  const { t: tr } = useI18n();
+  const r = localizedRole(roleId);
   return (
     <div
       className="flex items-center gap-3 rounded-xl border border-white/10 bg-card/70 p-3.5"
@@ -102,7 +104,7 @@ function RoleToggleCard({
         <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{r.short}</p>
       </div>
       {fixed ? (
-        <span className="text-[11px] font-bold text-muted-foreground">دائم</span>
+        <span className="text-[11px] font-bold text-muted-foreground">{tr("setup.fixed")}</span>
       ) : (
         <button
           type="button"
@@ -175,6 +177,7 @@ export default function SetupScreen({
   onBack: () => void;
   onNext: () => void;
 }) {
+  const { t: tr } = useI18n();
   const rules = settings.rules;
   const playerCount = settings.prefs.playerCount;
 
@@ -220,16 +223,14 @@ export default function SetupScreen({
           onClick={onBack}
           className="mb-3 text-sm font-bold text-muted-foreground hover:text-foreground"
         >
-          → رجوع
+          {tr("common.back")}
         </button>
-        <h1 className="text-2xl font-black">إعداد اللعبة</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          اضبط عدد اللاعبين والأدوار والقواعد ثم ابدأ.
-        </p>
+        <h1 className="text-2xl font-black">{tr("setup.title")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{tr("setup.subtitle")}</p>
       </div>
 
       <div className="flex flex-col gap-2.5">
-        <SectionTitle>عدد اللاعبين</SectionTitle>
+        <SectionTitle>{tr("setup.playerCount")}</SectionTitle>
         <div className="grid grid-cols-5 gap-2">
           {COUNTS.map((c) => (
             <Chip
@@ -244,21 +245,21 @@ export default function SetupScreen({
       </div>
 
       <div className="flex flex-col gap-2.5">
-        <SectionTitle>عدد المافيا</SectionTitle>
+        <SectionTitle>{tr("setup.mafiaCount")}</SectionTitle>
         <div className="flex items-stretch justify-between gap-3 rounded-2xl border border-white/10 bg-card/70 p-3">
           <button
             type="button"
             disabled={mafiaValue <= 1}
             onClick={() => setMafiaCount(mafiaValue - 1)}
             className="w-16 rounded-xl border border-white/10 bg-white/5 text-2xl font-black text-foreground transition-all hover:border-primary/50 active:scale-95 disabled:pointer-events-none disabled:opacity-30"
-            aria-label="إنقاص عدد المافيا"
+            aria-label={tr("setup.mafiaCount")}
           >
             −
           </button>
           <div className="flex flex-1 flex-col items-center justify-center">
             <p className="text-4xl font-black tabular-nums text-primary">{mafiaValue}</p>
             <p className="text-[11px] font-bold text-muted-foreground">
-              {rules.mafiaCount === null ? "تلقائي (موصى به)" : "مافيا في اللعبة"}
+              {rules.mafiaCount === null ? tr("setup.mafiaAuto") : tr("setup.mafiaInGame")}
             </p>
           </div>
           <button
@@ -266,14 +267,17 @@ export default function SetupScreen({
             disabled={mafiaValue >= mafiaMax}
             onClick={() => setMafiaCount(mafiaValue + 1)}
             className="w-16 rounded-xl border border-white/10 bg-white/5 text-2xl font-black text-foreground transition-all hover:border-primary/50 active:scale-95 disabled:pointer-events-none disabled:opacity-30"
-            aria-label="زيادة عدد المافيا"
+            aria-label={tr("setup.mafiaCount")}
           >
             +
           </button>
         </div>
         <p className="text-center text-xs leading-5 text-muted-foreground">
-          تُوزَّع الأدوار: {mafiaValue} مافيا و {playerCount - mafiaValue} من اللاعبين الآخرين —
-          الحد الأقصى المسموح هو {mafiaMax} مافيا ليبقى التوزيع متوازنًا.
+          {tr("setup.mafiaHint", {
+            mafia: mafiaValue,
+            others: playerCount - mafiaValue,
+            max: mafiaMax,
+          })}
         </p>
         {rules.mafiaCount !== null && (
           <button
@@ -281,41 +285,41 @@ export default function SetupScreen({
             onClick={() => setMafiaCount(mafiaRec)}
             className="text-center text-xs font-bold text-accent underline-offset-4 hover:underline"
           >
-            ↩ العودة إلى العدد التلقائي الموصى به ({mafiaRec})
+            {tr("setup.mafiaReset", { n: mafiaRec })}
           </button>
         )}
       </div>
 
       <div className="flex flex-col gap-2.5">
-        <SectionTitle>طريقة اللعب</SectionTitle>
+        <SectionTitle>{tr("setup.playMode")}</SectionTitle>
         <div className="flex flex-col gap-2">
           <ModeCard
             emoji="👥"
-            title="اللعب مع الأصدقاء"
-            desc="تناوبوا على هاتف واحد ومرّروه سرًا بينكم."
+            title={tr("setup.friendsTitle")}
+            desc={tr("setup.friendsDesc")}
             active={settings.prefs.playMode === "friends"}
             onClick={() => onChange({ ...settings, prefs: { ...settings.prefs, playMode: "friends" } })}
           />
           <ModeCard
             emoji="🤖"
-            title="اللعب ضد الذكاء الاصطناعي"
-            desc="أنت اللاعب الوحيد والباقون شخصيات ذكاء اصطناعي بشخصيات مختلفة."
+            title={tr("setup.aiTitle")}
+            desc={tr("setup.aiDesc")}
             active={settings.prefs.playMode === "ai"}
             onClick={() => onChange({ ...settings, prefs: { ...settings.prefs, playMode: "ai" } })}
           />
           <ModeCard
             emoji="🤝"
-            title="أصدقاء + ذكاء اصطناعي"
-            desc="اعب مع أصدقائك ضد شخصيات ذكية."
+            title={tr("setup.hybridTitle")}
+            desc={tr("setup.hybridDesc")}
             active={false}
-            onClick={() => toast.info("وضع الأصدقاء + الذكاء الاصطناعي قريبًا في النسخة القادمة 🤝")}
+            onClick={() => toast.info(tr("setup.hybridSoon"))}
           />
         </div>
       </div>
 
       {settings.prefs.playMode === "ai" && (
         <div className="flex flex-col gap-2.5">
-          <SectionTitle>مستوى الذكاء</SectionTitle>
+          <SectionTitle>{tr("setup.difficulty")}</SectionTitle>
           <div className="grid grid-cols-3 gap-2">
             {(Object.keys(DIFFICULTY_META) as Difficulty[]).map((d) => {
               const meta = DIFFICULTY_META[d];
@@ -325,19 +329,19 @@ export default function SetupScreen({
                   selected={safeDifficulty(settings.prefs.difficulty) === d}
                   onClick={() => onChange({ ...settings, prefs: { ...settings.prefs, difficulty: d } })}
                 >
-                  {meta.emoji} {meta.label}
+                  {meta.emoji} {tr(`difficulty.${d}.label`)}
                 </Chip>
               );
             })}
           </div>
           <p className="text-center text-xs text-muted-foreground">
-            {difficultyMeta(settings.prefs.difficulty).hint ?? ""}
+            {tr(`difficulty.${safeDifficulty(settings.prefs.difficulty)}.hint`)}
           </p>
         </div>
       )}
 
       <div className="flex flex-col gap-2.5">
-        <SectionTitle>الأدوار في اللعبة</SectionTitle>
+        <SectionTitle>{tr("setup.rolesTitle")}</SectionTitle>
         <div className="flex flex-col gap-2">
           <RoleToggleCard roleId="mafia" fixed />
           <RoleToggleCard roleId="citizen" fixed />
@@ -360,7 +364,7 @@ export default function SetupScreen({
       </div>
 
       <div className="flex flex-col gap-2.5">
-        <SectionTitle>مدة النقاش</SectionTitle>
+        <SectionTitle>{tr("setup.discussionTitle")}</SectionTitle>
         <div className="grid grid-cols-5 gap-2">
           {DURATIONS.map((m) => (
             <Chip
@@ -368,36 +372,36 @@ export default function SetupScreen({
               selected={rules.discussionMinutes === m}
               onClick={() => setRules({ discussionMinutes: m })}
             >
-              {m} د
+              {tr("setup.minShort", { n: m })}
             </Chip>
           ))}
         </div>
       </div>
 
       <div className="flex flex-col gap-2.5">
-        <SectionTitle>إعدادات متقدمة</SectionTitle>
+        <SectionTitle>{tr("setup.advanced")}</SectionTitle>
         <div className="flex flex-col gap-2">
           <RuleToggle
-            label="كشف دور اللاعب بعد خروجه"
-            hint="عندما يخرج لاعب يُعرض دوره على الجميع."
+            label={tr("setup.revealRoleLabel")}
+            hint={tr("setup.revealRoleHint")}
             checked={rules.revealRoleOnElimination}
             onChange={(v) => setRules({ revealRoleOnElimination: v })}
           />
           <RuleToggle
-            label="الطبيب يحمي نفسه"
-            hint="يستطيع الطبيب اختيار نفسه للحماية."
+            label={tr("setup.doctorSelfLabel")}
+            hint={tr("setup.doctorSelfHint")}
             checked={rules.doctorCanHealSelf}
             onChange={(v) => setRules({ doctorCanHealSelf: v })}
           />
           <RuleToggle
-            label="التصويت على عدم إخراج أحد"
-            hint="يستطيع اللاعب التصويت بأن لا يخرج أحد."
+            label={tr("setup.abstainLabel")}
+            hint={tr("setup.abstainHint")}
             checked={rules.allowAbstain}
             onChange={(v) => setRules({ allowAbstain: v })}
           />
           <RuleToggle
-            label="إعادة التصويت عند التعادل"
-            hint="إذا تعادل صوتان يُعاد التصويت بينهما."
+            label={tr("setup.tieRevoteLabel")}
+            hint={tr("setup.tieRevoteHint")}
             checked={rules.tieRevote}
             onChange={(v) => setRules({ tieRevote: v })}
           />
@@ -406,11 +410,9 @@ export default function SetupScreen({
 
       <div className="mt-2 flex flex-col gap-2">
         <PrimaryButton onClick={onNext}>
-          {settings.prefs.playMode === "ai"
-            ? "متابعة — أنت ضد الذكاء الاصطناعي 🤖"
-            : "متابعة إلى أسماء اللاعبين"}
+          {settings.prefs.playMode === "ai" ? tr("setup.continueAi") : tr("setup.continueNames")}
         </PrimaryButton>
-        <GhostButton onClick={onBack}>رجوع</GhostButton>
+        <GhostButton onClick={onBack}>{tr("common.backShort")}</GhostButton>
       </div>
     </ScreenShell>
   );

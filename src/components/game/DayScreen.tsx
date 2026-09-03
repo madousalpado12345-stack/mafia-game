@@ -1,25 +1,27 @@
 import { alivePlayers, deadPlayers, playerById } from "@/game/engine";
-import { ROLES } from "@/game/roles";
+import { localizedRole, useI18n } from "@/i18n";
 import type { GameState } from "@/game/types";
-import { GameTopBar, PlayerStatusRow, PrimaryButton, ScreenShell, SectionTitle, useAutoAdvance } from "./ui";
+import { GameTopBar, logEntryText, PlayerStatusRow, PrimaryButton, ScreenShell, SectionTitle, useAutoAdvance } from "./ui";
 
 function LogList({ game }: { game: GameState }) {
+  const { t: tr } = useI18n();
   return (
     <details className="group rounded-xl border border-white/10 bg-card/70">
       <summary className="cursor-pointer list-none px-4 py-3 text-sm font-bold text-accent">
-        📜 سجل الأحداث
-        <span className="float-left text-xs text-muted-foreground">اضغط للعرض</span>
+        {tr("day.logTitle")}
+        <span className="float-left text-xs text-muted-foreground">{tr("day.logTap")}</span>
       </summary>
       <div className="flex flex-col gap-2 border-t border-white/10 px-4 py-3">
         {game.log.length === 0 && (
-          <p className="text-sm text-muted-foreground">لا توجد أحداث بعد.</p>
+          <p className="text-sm text-muted-foreground">{tr("day.logEmpty")}</p>
         )}
         {game.log.map((entry) => (
           <p key={entry.id} className="text-xs leading-5 text-muted-foreground">
             <span className="font-extrabold text-accent">
-              الليلة {entry.night} — {entry.phase === "night" ? "الليل" : "النهار"}:
+              {tr("common.nightX", { n: entry.night })} —{" "}
+              {entry.phase === "night" ? tr("common.nightPhase") : tr("common.dayPhase")}:
             </span>{" "}
-            {entry.text}
+            {logEntryText(entry, game.players)}
           </p>
         ))}
       </div>
@@ -41,6 +43,7 @@ export default function DayScreen({
   onExit: () => void;
   onSave: () => void;
 }) {
+  const { t: tr } = useI18n();
   // Spectators see the night result briefly, then discussion starts itself.
   useAutoAdvance(spectator, onContinue, 2600);
 
@@ -50,53 +53,50 @@ export default function DayScreen({
 
   return (
     <ScreenShell>
-      <GameTopBar title={`النهار — الليلة ${game.night}`} onExit={onExit} onSave={onSave} />
+      <GameTopBar title={tr("common.dayNightX", { n: game.night })} onExit={onExit} onSave={onSave} />
 
       <div className="text-center">
         <div className="animate-float text-8xl">☀️</div>
-        <h1 className="mt-4 text-4xl font-black text-glow-gold">انتهى الليل</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          استيقظوا جميعًا... ماذا حدث أثناء الليل؟
-        </p>
+        <h1 className="mt-4 text-4xl font-black text-glow-gold">{tr("day.title")}</h1>
+        <p className="mt-2 text-sm text-muted-foreground">{tr("day.woke")}</p>
       </div>
 
       {eliminated ? (
         <div className="rounded-2xl border border-red-500/40 bg-red-500/10 p-6 text-center">
           <div className="text-5xl">⚰️</div>
           <h2 className="mt-3 text-2xl font-black text-red-400 text-glow">
-            تم إخراج {eliminated.name} من اللعبة
+            {tr("day.eliminatedX", { name: eliminated.name })}
           </h2>
           {reveal && (
             <p className="mt-2 text-sm font-bold text-muted-foreground">
-              وكان دوره: {ROLES[eliminated.role].emoji} {ROLES[eliminated.role].name}
+              {tr("day.andWasRole", { emoji: localizedRole(eliminated.role).emoji, role: localizedRole(eliminated.role).name })}
             </p>
           )}
           <p className="mt-3 text-xs text-muted-foreground">
-            {eliminated.name} يبقى معكم لكنه لا يصوّت ولا يستخدم قدرته. 👻
+            {tr("day.staysBut", { name: eliminated.name })}
           </p>
         </div>
       ) : (
         <div className="rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-6 text-center">
           <div className="text-5xl">🌿</div>
           <h2 className="mt-3 text-2xl font-black text-emerald-400">
-            لم يخرج أي لاعب هذه الليلة
+            {tr("day.noElim")}
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            إما أن الطبيب أنقذ الهدف، أو أن المافيا لم تتحرك. تابعوا النقاش بحذر.
+            {tr("day.doctorSaved")}
           </p>
         </div>
       )}
 
       <div className="flex flex-col gap-2.5">
-        <SectionTitle>اللاعبون ({alivePlayers(game.players).length} حي)</SectionTitle>
+        <SectionTitle>{tr("day.playersAlive", { n: alivePlayers(game.players).length })}</SectionTitle>
         <div className="flex flex-col gap-2">
           {game.players.map((p) => (
             <PlayerStatusRow key={p.id} player={p} />
           ))}
         </div>
         {deadPlayers(game.players).length > 0 && (
-          <p className="text-center text-xs text-muted-foreground">
-            👻 خارج اللعبة: {deadPlayers(game.players).map((p) => p.name).join("، ")}
+          <p className="text-center text-xs text-muted-foreground">            {tr("day.outOfGame", { names: deadPlayers(game.players).map((p) => p.name).join(tr("common.listSep")) })}
           </p>
         )}
       </div>
@@ -104,7 +104,7 @@ export default function DayScreen({
       <LogList game={game} />
 
       <div className="mt-2">
-        <PrimaryButton onClick={onContinue}>بدء النقاش 🗣️</PrimaryButton>
+        <PrimaryButton onClick={onContinue}>{tr("day.startDiscussion")}</PrimaryButton>
       </div>
     </ScreenShell>
   );

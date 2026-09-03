@@ -1,4 +1,5 @@
 import { alivePlayers } from "@/game/engine";
+import { useI18n } from "@/i18n";
 import type { GameState, Player } from "@/game/types";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -25,6 +26,7 @@ export default function VoteScreen({
   onExit: () => void;
   onSave: () => void;
 }) {
+  const { t: tr } = useI18n();
   const [phase, setPhase] = useState<"handoff" | "choose">(aiMode ? "choose" : "handoff");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -45,15 +47,15 @@ export default function VoteScreen({
   return (
     <ScreenShell>
       <GameTopBar
-        title={`التصويت — ${index + 1} من ${total}`}
+        title={tr("vote.title", { x: index + 1, y: total })}
         onExit={onExit}
         onSave={onSave}
       />
 
       <p className="text-center text-xs font-extrabold text-muted-foreground">
         {aiMode
-          ? "التصويت — صوتك أنت"
-          : `التصويت ${revote ? "— جولة إعادة" : ""} — المصوت ${index + 1} من ${total}`}
+          ? tr("vote.yourVote")
+          : tr("vote.voterXofY", { revote: revote ? tr("vote.revoteRound") : "", x: index + 1, y: total })}
       </p>
 
       {phase === "handoff" ? (
@@ -61,19 +63,17 @@ export default function VoteScreen({
           <div className="flex-1" />
           <PassPhone
             name={voter.name}
-            note="صوّت سرًا ضد اللاعب الذي تشك فيه. لن يرى أحد اختيارك."
+            note={tr("vote.handoffNote")}
           />
           <div className="flex-1" />
-          <PrimaryButton onClick={() => setPhase("choose")}>بدء التصويت 🗳️</PrimaryButton>
+          <PrimaryButton onClick={() => setPhase("choose")}>{tr("vote.startVoting")}</PrimaryButton>
         </>
       ) : (
         <>
           <div className="text-center">
-            <h2 className="text-xl font-black">اختر من تصوّت ضده</h2>
+            <h2 className="text-xl font-black">{tr("vote.chooseTarget")}</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              {aiMode
-                ? "هذا صوتك أنت — لا يمكنك التصويت على نفسك."
-                : `${voter.name} — لا يمكنك التصويت على نفسك.`}
+              {aiMode ? tr("vote.selfHint") : tr("vote.voterSelfHint", { name: voter.name })}
             </p>
           </div>
 
@@ -81,7 +81,7 @@ export default function VoteScreen({
             items={candidates}
             selectedId={selectedId}
             onSelect={setSelectedId}
-            empty="لا يوجد مرشحون في هذه الجولة."
+            empty={tr("vote.empty")}
           />
 
           {canAbstain && (
@@ -96,7 +96,7 @@ export default function VoteScreen({
               )}
             >
               <span className="text-xl">🤷</span>
-              <span className="flex-1 text-sm font-bold">لا أريد إخراج أحد</span>
+              <span className="flex-1 text-sm font-bold">{tr("vote.abstain")}</span>
               <span
                 className={cn(
                   "size-4 rounded-full border-2",
@@ -115,7 +115,7 @@ export default function VoteScreen({
                 setPhase("handoff");
               }}
             >
-              تأكيد التصويت
+              {tr("vote.confirm")}
             </PrimaryButton>
           </div>
         </>

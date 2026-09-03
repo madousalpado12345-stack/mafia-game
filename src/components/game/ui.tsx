@@ -1,5 +1,5 @@
-import { ROLES } from "@/game/roles";
-import type { RoleId } from "@/game/types";
+import { getLang, LANGS, localizedRole, translate, useI18n } from "@/i18n";
+import type { LogEntry, RoleId } from "@/game/types";
 import { cn } from "@/lib/utils";
 import {
   AlertDialog,
@@ -72,6 +72,32 @@ export function GhostButton({
   );
 }
 
+/** Language switcher — used on the menu and in the settings screen. */
+export function LanguagePicker() {
+  const { lang, setLang } = useI18n();
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-1.5">
+      {LANGS.map((l) => (
+        <button
+          key={l.id}
+          type="button"
+          onClick={() => setLang(l.id)}
+          aria-label={`${l.flag} ${l.label}`}
+          title={l.label}
+          className={cn(
+            "rounded-full border px-2.5 py-1 text-[11px] font-bold transition-all active:scale-95",
+            lang === l.id
+              ? "border-accent/60 bg-accent/15 text-accent"
+              : "border-white/10 bg-card/60 text-muted-foreground hover:border-white/25 hover:text-foreground",
+          )}
+        >
+          {l.flag} {l.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 /** Top bar used inside active-game screens. */
 export function GameTopBar({
   title,
@@ -82,6 +108,7 @@ export function GameTopBar({
   onExit: () => void;
   onSave: () => void;
 }) {
+  const { t: tr } = useI18n();
   return (
     <div className="flex items-center justify-between gap-2">
       <AlertDialog>
@@ -90,19 +117,21 @@ export function GameTopBar({
             type="button"
             className="rounded-lg border border-white/10 bg-card/60 px-3 py-1.5 text-xs font-bold text-muted-foreground transition-colors hover:text-foreground"
           >
-            ✕ القائمة
+            {tr("common.menu")}
           </button>
         </AlertDialogTrigger>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>الخروج إلى القائمة؟</AlertDialogTitle>
+            <AlertDialogTitle>{tr("common.exitTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              سيتم حفظ اللعبة تلقائيًا ويمكنك متابعتها لاحقًا من القائمة الرئيسية.
+              {tr("common.exitDesc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>إلغاء</AlertDialogCancel>
-            <AlertDialogAction onClick={onExit}>حفظ والخروج</AlertDialogAction>
+            <AlertDialogCancel>{tr("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={onExit}>
+              {tr("common.exitSave")}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -112,7 +141,7 @@ export function GameTopBar({
         onClick={onSave}
         className="rounded-lg border border-white/10 bg-card/60 px-3 py-1.5 text-xs font-bold text-muted-foreground transition-colors hover:text-foreground"
       >
-        💾 حفظ
+        {tr("common.save")}
       </button>
     </div>
   );
@@ -127,7 +156,7 @@ export function RoleCard({
   className?: string;
   children?: ReactNode;
 }) {
-  const r = ROLES[roleId];
+  const r = localizedRole(roleId);
   return (
     <div
       className={cn("relative overflow-hidden rounded-2xl border p-6 text-center", className)}
@@ -148,18 +177,22 @@ export function RoleCard({
 }
 
 export function SecretBadge() {
+  const { t: tr } = useI18n();
   return (
     <p className="mx-auto mt-4 inline-flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-xs font-bold text-accent">
-      🤫 دور سري — لا تُظهِره لأي لاعب آخر
+      {tr("common.secretBadge")}
     </p>
   );
 }
 
 export function PassPhone({ name, note }: { name: string; note?: string }) {
+  const { t: tr } = useI18n();
   return (
     <div className="animate-glow rounded-2xl border border-accent/40 bg-accent/10 p-5 text-center">
       <div className="text-3xl">📱</div>
-      <p className="mt-2 text-lg font-black text-accent">مرّر الهاتف إلى {name}</p>
+      <p className="mt-2 text-lg font-black text-accent">
+        {tr("common.passTo", { name })}
+      </p>
       {note && <p className="mt-1 text-xs leading-5 text-muted-foreground">{note}</p>}
     </div>
   );
@@ -233,7 +266,8 @@ export function PlayerStatusRow({
   player: { id: string; name: string; role: RoleId; status: "alive" | "dead" };
   showRole?: boolean;
 }) {
-  const r = ROLES[player.role];
+  const { t: tr } = useI18n();
+  const r = localizedRole(player.role);
   const dead = player.status === "dead";
   return (
     <div
@@ -246,9 +280,13 @@ export function PlayerStatusRow({
         {player.name}
       </span>
       {dead ? (
-        <span className="text-xs font-bold text-muted-foreground">خارج اللعبة</span>
+        <span className="text-xs font-bold text-muted-foreground">
+          {tr("common.statusDead")}
+        </span>
       ) : (
-        <span className="text-xs font-bold text-emerald-400">حي</span>
+        <span className="text-xs font-bold text-emerald-400">
+          {tr("common.statusAlive")}
+        </span>
       )}
       {showRole && (
         <span className="text-xs font-extrabold" style={{ color: r.color }}>
@@ -259,12 +297,48 @@ export function PlayerStatusRow({
   );
 }
 
+/** Renders a structured (or legacy) log entry in the current language. */
+export function logEntryText(entry: LogEntry, players: { id: string; name: string }[]): string {
+  const lang = getLang();
+  const nameOf = (id?: string) => players.find((p) => p.id === id)?.name ?? "";
+  switch (entry.kind) {
+    case "nightKill":
+      return translate(lang, "log.nightKill", { name: nameOf(entry.playerId) });
+    case "noNightKill":
+      return translate(lang, "log.noNightKill");
+    case "dayEliminate":
+      return translate(lang, "log.dayEliminate", { name: nameOf(entry.playerId) });
+    case "dayEliminateReveal":
+      return translate(
+        lang,
+        "log.dayEliminateReveal",
+        { name: nameOf(entry.playerId), role: entry.role ? localizedRole(entry.role, lang).name : "" },
+      );
+    case "tie":
+      return translate(lang, "log.tie");
+    case "noDayEliminate":
+      return translate(lang, "log.noDayEliminate");
+    default:
+      return entry.text ?? "";
+  }
+}
+
 export function formatVotes(n: number): string {
-  if (n === 0) return "0 أصوات";
-  if (n === 1) return "صوت واحد";
-  if (n === 2) return "صوتان";
-  if (n <= 10) return `${n} أصوات`;
-  return `${n} صوتًا`;
+  const lang = getLang();
+  if (lang === "ar") {
+    if (n === 0) return "0 أصوات";
+    if (n === 1) return "صوت واحد";
+    if (n === 2) return "صوتان";
+    if (n <= 10) return `${n} أصوات`;
+    return `${n} صوتًا`;
+  }
+  if (lang === "fr") {
+    if (n === 0) return "0 voix";
+    if (n === 1) return "1 voix";
+    return `${n} voix`;
+  }
+  if (n === 1) return "1 vote";
+  return `${n} votes`;
 }
 
 export function formatTime(totalSeconds: number): string {
@@ -273,20 +347,34 @@ export function formatTime(totalSeconds: number): string {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-/** Arabic plural forms for a night count (ليلة / ليلتان / ليالٍ / ليلة). */
+/** Pluralized night count (ليلة / ليلتان / ليالٍ / ليلة — nuit — night). */
 export function formatNights(n: number): string {
-  if (n === 1) return "ليلة واحدة";
-  if (n === 2) return "ليلتين";
-  if (n >= 3 && n <= 10) return `${n} ليالٍ`;
-  return `${n} ليلة`;
+  const lang = getLang();
+  if (lang === "ar") {
+    if (n === 1) return "ليلة واحدة";
+    if (n === 2) return "ليلتين";
+    if (n >= 3 && n <= 10) return `${n} ليالٍ`;
+    return `${n} ليلة`;
+  }
+  if (lang === "fr") {
+    return n === 1 ? "1 nuit" : `${n} nuits`;
+  }
+  return n === 1 ? "1 night" : `${n} nights`;
 }
 
-/** Arabic plural forms for a surviving-player count. */
+/** Pluralized surviving-player count. */
 export function formatSurvivors(n: number): string {
-  if (n === 1) return "لاعب واحد";
-  if (n === 2) return "لاعبان";
-  if (n >= 3 && n <= 10) return `${n} لاعبين`;
-  return `${n} لاعبًا`;
+  const lang = getLang();
+  if (lang === "ar") {
+    if (n === 1) return "لاعب واحد";
+    if (n === 2) return "لاعبان";
+    if (n >= 3 && n <= 10) return `${n} لاعبين`;
+    return `${n} لاعبًا`;
+  }
+  if (lang === "fr") {
+    return n === 1 ? "1 joueur" : `${n} joueurs`;
+  }
+  return n === 1 ? "1 player" : `${n} players`;
 }
 
 /** Fires a callback once, after a delay, while `active` is true. Used to keep
@@ -298,7 +386,7 @@ export function useAutoAdvance(active: boolean | undefined, cb: () => void, dela
   useEffect(() => {
     if (!active || firedRef.current) return;
     firedRef.current = true;
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       try {
         cbRef.current();
       } catch (err) {
@@ -306,6 +394,6 @@ export function useAutoAdvance(active: boolean | undefined, cb: () => void, dela
         console.error("[autoAdvance]", err);
       }
     }, delay);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [active, delay]);
 }

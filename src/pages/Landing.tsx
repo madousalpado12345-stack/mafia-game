@@ -37,6 +37,7 @@ import {
 } from "@/game/engine";
 import { configureAudio, playSound } from "@/game/sound";
 import { DEFAULT_SETTINGS, loadAppState, saveAppState } from "@/game/storage";
+import { useI18n } from "@/i18n";
 import type {
   AppState,
   GameState,
@@ -57,25 +58,22 @@ function nightScreenFor(step: NightStep): ScreenName {
 }
 
 function RoleIntro({ aiMode, onBegin }: { aiMode: boolean; onBegin: () => void }) {
+  const { t: tr } = useI18n();
   return (
     <ScreenShell>
       <div className="flex-1" />
       <div className="text-center">
         <div className="animate-float text-7xl">🎴</div>
-        <h1 className="mt-4 text-3xl font-black text-glow-gold">توزيع الأدوار</h1>
-        <p className="mx-auto mt-3 max-w-[300px] text-sm leading-7 text-muted-foreground">
-          {aiMode
-            ? "سيُظهر الهاتف دورك السري أنت فقط — الشخصيات الأخرى تعرف أدوارها سرًا ولن تراها أبدًا."
-            : "سيُظهر الهاتف لكل لاعب دوره سرًا واحدًا تلو الآخر. مرّروا الهاتف بينكم ولا تُطلعوا أحدًا على دوركم."}
+        <h1 className="mt-4 text-3xl font-black text-glow-gold">{tr("roleIntro.title")}</h1>
+        <p className="mx-auto mt-3 max-w-[320px] text-sm leading-7 text-muted-foreground">
+          {aiMode ? tr("roleIntro.aiText") : tr("roleIntro.friendsText")}
         </p>
       </div>
       <div className="rounded-2xl border border-white/10 bg-card/70 p-4 text-center text-xs leading-6 text-muted-foreground">
-        {aiMode
-          ? "💡 دورك يبقى سرًا طوال اللعبة. استخدم معلوماتك بذكاء ولا تكشف نفسك إلا في اللحظة المناسبة."
-          : "💡 كل لاعب يضغط «إظهار دوري» ويراه وحده، ثم يضغط «إخفاء الدور» ويمرر الهاتف إلى اللاعب التالي."}
+        {aiMode ? tr("roleIntro.tipAi") : tr("roleIntro.tipFriends")}
       </div>
       <div className="flex-1" />
-      <PrimaryButton onClick={onBegin}>ابدأ التوزيع 🎴</PrimaryButton>
+      <PrimaryButton onClick={onBegin}>{tr("roleIntro.begin")}</PrimaryButton>
     </ScreenShell>
   );
 }
@@ -93,6 +91,7 @@ function SpectateScreen({
   onExit: () => void;
   onSave: () => void;
 }) {
+  const { t: tr } = useI18n();
   const human = humanPlayer(game.players);
   return (
     <ScreenShell>
@@ -102,30 +101,29 @@ function SpectateScreen({
           onClick={onExit}
           className="rounded-lg border border-white/10 bg-card/60 px-3 py-1.5 text-xs font-bold text-muted-foreground transition-colors hover:text-foreground"
         >
-          ✕ القائمة
+          {tr("common.menu")}
         </button>
         <button
           type="button"
           onClick={onSave}
           className="rounded-lg border border-white/10 bg-card/60 px-3 py-1.5 text-xs font-bold text-muted-foreground transition-colors hover:text-foreground"
         >
-          💾 حفظ
+          {tr("common.save")}
         </button>
       </div>
       <div className="flex-1" />
       <div className="text-center">
         <div className="animate-float text-8xl">👻</div>
-        <h1 className="mt-4 text-3xl font-black text-glow">لقد خرجت من اللعبة</h1>
-        <p className="mx-auto mt-3 max-w-[310px] text-sm leading-7 text-muted-foreground">
-          {human ? `${human.name}، ` : ""}لا يمكنك التصويت أو استخدام قدرتك بعد الآن، لكن
-          المباراة مستمرة ويمكنك متابعتها كمشاهد حتى النهاية.
+        <h1 className="mt-4 text-3xl font-black text-glow">{tr("spectate.title")}</h1>
+        <p className="mx-auto mt-3 max-w-[330px] text-sm leading-7 text-muted-foreground">
+          {tr("spectate.text", { name: human ? human.name : "" })}
         </p>
       </div>
       <div className="rounded-2xl border border-white/10 bg-card/70 p-4 text-center text-xs leading-6 text-muted-foreground">
-        👁️ ستتابع تلقائيًا قرارات الليل والنقاش والتصويت بين اللاعبين المتبقين.
+        {tr("spectate.note")}
       </div>
       <div className="flex-1" />
-      <PrimaryButton onClick={onContinue}>متابعة المشاهدة 👁️</PrimaryButton>
+      <PrimaryButton onClick={onContinue}>{tr("spectate.continue")}</PrimaryButton>
     </ScreenShell>
   );
 }
@@ -139,6 +137,7 @@ const INITIAL_STATE: AppState = {
 };
 
 export default function Landing() {
+  const { t: tr } = useI18n();
   const [state, setState] = useState<AppState>(() => loadAppState() ?? INITIAL_STATE);
 
   // Auto-save the whole app state (game + settings) on every change.
@@ -216,7 +215,7 @@ export default function Landing() {
 
   const saveNow = () => {
     saveAppState(state);
-    toast.success("تم حفظ اللعبة ✓");
+    toast.success(tr("common.saved"));
   };
 
   const updateSettings = (next: Settings) =>
@@ -444,7 +443,7 @@ export default function Landing() {
       const human = humanPlayer(game.players);
       if (!human) return;
       if (targetId === human.id) {
-        toast.error("لا يمكنك التصويت على نفسك");
+        toast.error(tr("common.cantVoteSelf"));
         return;
       }
       game.votes.push({ voterId: human.id, targetId });
@@ -459,7 +458,7 @@ export default function Landing() {
     const voter = voters[game.voteCursor];
     if (!voter) return;
     if (targetId === voter.id) {
-      toast.error("لا يمكنك التصويت على نفسك");
+      toast.error(tr("common.cantVoteSelf"));
       return;
     }
     game.votes.push({ voterId: voter.id, targetId });

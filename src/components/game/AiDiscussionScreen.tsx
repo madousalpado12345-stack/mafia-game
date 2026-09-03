@@ -1,5 +1,6 @@
 import { humanPlayer } from "@/game/ai";
 import { playSound } from "@/game/sound";
+import { useI18n } from "@/i18n";
 import type { GameState } from "@/game/types";
 import { cn } from "@/lib/utils";
 import { useEffect, useRef, useState } from "react";
@@ -22,6 +23,7 @@ export default function AiDiscussionScreen({
   onExit: () => void;
   onSave: () => void;
 }) {
+  const { t: tr } = useI18n();
   const script = game.discussionScript ?? [];
   const [shown, setShown] = useState(0); // fully-revealed utterances
   const [typed, setTyped] = useState(0); // chars typed in the current utterance
@@ -98,14 +100,12 @@ export default function AiDiscussionScreen({
 
   return (
     <div className="flex flex-1 flex-col gap-4">
-      <GameTopBar title="النقاش 🗣️ — الذكاء الاصطناعي" onExit={onExit} onSave={onSave} />
+      <GameTopBar title={tr("discussion.aiTitle")} onExit={onExit} onSave={onSave} />
 
       <div className="text-center">
-        <h1 className="text-3xl font-black text-glow-gold">مرحلة النقاش</h1>
-        <p className="mx-auto mt-2 max-w-[310px] text-sm leading-6 text-muted-foreground">
-          {human
-            ? `شاهد حوار الشخصيات حولك يا ${human.name} — راقب اتهاماتهم ودفاعاتهم ثم صوّت في النهاية.`
-            : "شاهد حوار الشخصيات بينما تتواصل المباراة تلقائيًا."}
+        <h1 className="text-3xl font-black text-glow-gold">{tr("discussion.heading")}</h1>
+        <p className="mx-auto mt-2 max-w-[330px] text-sm leading-6 text-muted-foreground">
+          {human ? tr("discussion.aiSub", { name: human.name }) : tr("discussion.aiSubSpectator")}
         </p>
       </div>
 
@@ -118,8 +118,8 @@ export default function AiDiscussionScreen({
         >
           {formatTime(secondsLeft)}
         </span>
-        <span className="text-[10px] font-bold text-muted-foreground">متبقي من وقت النقاش</span>
-        {paused && <span className="text-[10px] font-extrabold text-primary">— موقوف ⏸</span>}
+        <span className="text-[10px] font-bold text-muted-foreground">{tr("discussion.timeRemainingLabel")}</span>
+        {paused && <span className="text-[10px] font-extrabold text-primary">{tr("discussion.pausedBadge")}</span>}
       </div>
 
       <div className="game-scroll flex max-h-[48dvh] flex-1 flex-col gap-3 overflow-y-auto pr-1">
@@ -149,7 +149,7 @@ export default function AiDiscussionScreen({
       <div className="mt-auto flex flex-col gap-2">
         {chatDone && secondsLeft > 0 && (
           <p className="text-center text-[11px] text-muted-foreground">
-            انتهى الحوار — سيبدأ التصويت تلقائيًا عند انتهاء المؤقت، أو اضغط «إنهاء النقاش الآن».
+            {tr("discussion.chatDone")}
           </p>
         )}
         <div className="flex gap-2">
@@ -161,14 +161,14 @@ export default function AiDiscussionScreen({
             }}
             className="h-11 flex-1 rounded-xl border border-white/10 bg-card/70 text-sm font-extrabold transition-all hover:border-accent/40"
           >
-            {paused ? "▶️ متابعة" : "⏸️ إيقاف مؤقت"}
+            {paused ? tr("discussion.resume") : tr("discussion.pause")}
           </button>
           <button
             type="button"
             onClick={skipAll}
             className="h-11 flex-1 rounded-xl border border-white/10 bg-card/70 text-sm font-extrabold text-muted-foreground transition-all hover:border-accent/40 hover:text-foreground"
           >
-            ⏩ تخطي
+            {tr("discussion.skip")}
           </button>
           <button
             type="button"
@@ -178,7 +178,7 @@ export default function AiDiscussionScreen({
             }}
             className="h-11 flex-1 rounded-xl border border-primary/40 bg-primary/10 text-sm font-extrabold text-primary transition-all hover:bg-primary/20"
           >
-            إنهاء النقاش الآن
+            {tr("discussion.endNow")}
           </button>
         </div>
       </div>
@@ -197,6 +197,7 @@ function ChatBubble({
   complete?: boolean;
   active?: boolean;
 }) {
+  const { t: tr } = useI18n();
   const speaking = active && !complete;
   return (
     <div
@@ -211,7 +212,7 @@ function ChatBubble({
       <div className="min-w-0 flex-1">
         <p className="flex items-center gap-2 text-xs font-extrabold text-accent">
           {name}
-          {speaking && <span className="text-[9px] font-bold text-accent/70">يتحدث...</span>}
+          {speaking && <span className="text-[9px] font-bold text-accent/70">{tr("discussion.speaking")}</span>}
         </p>
         <p className="mt-0.5 text-sm leading-6 text-foreground/90">
           {text}

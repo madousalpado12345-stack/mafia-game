@@ -1,6 +1,7 @@
 import type { Settings } from "@/game/types";
 import { cn } from "@/lib/utils";
-import { GhostButton, ScreenShell, SectionTitle } from "./ui";
+import { useI18n } from "@/i18n";
+import { GhostButton, LanguagePicker, ScreenShell, SectionTitle } from "./ui";
 
 const DURATIONS = [1, 2, 3, 5, 10];
 
@@ -45,16 +46,6 @@ function Toggle({
   );
 }
 
-function StaticRow({ emoji, label, value }: { emoji: string; label: string; value: string }) {
-  return (
-    <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-card/70 px-4 py-3">
-      <span className="text-xl">{emoji}</span>
-      <p className="flex-1 text-sm font-bold">{label}</p>
-      <span className="text-xs font-bold text-muted-foreground">{value}</span>
-    </div>
-  );
-}
-
 export default function SettingsScreen({
   settings,
   onChange,
@@ -64,6 +55,7 @@ export default function SettingsScreen({
   onChange: (next: Settings) => void;
   onBack: () => void;
 }) {
+  const { t: tr } = useI18n();
   const { prefs, rules } = settings;
   const setPrefs = (patch: Partial<Settings["prefs"]>) =>
     onChange({ ...settings, prefs: { ...prefs, ...patch } });
@@ -78,26 +70,26 @@ export default function SettingsScreen({
           onClick={onBack}
           className="mb-3 text-sm font-bold text-muted-foreground hover:text-foreground"
         >
-          → رجوع
+          {tr("common.back")}
         </button>
-        <h1 className="text-2xl font-black">الإعدادات</h1>
-        <p className="mt-1 text-sm text-muted-foreground">تُحفظ الإعدادات تلقائيًا.</p>
+        <h1 className="text-2xl font-black">{tr("settings.title")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{tr("settings.subtitle")}</p>
       </div>
 
       <div className="flex flex-col gap-2.5">
-        <SectionTitle>الصوت</SectionTitle>
+        <SectionTitle>{tr("settings.soundTitle")}</SectionTitle>
         <div className="flex flex-col gap-2">
           <Toggle
             emoji="🔊"
-            label="الصوت"
-            hint="مؤثرات بداية الليل والنهار والتصويت والفوز."
+            label={tr("settings.soundLabel")}
+            hint={tr("settings.soundHint")}
             checked={prefs.soundOn}
             onChange={(v) => setPrefs({ soundOn: v })}
           />
           <Toggle
             emoji="🎵"
-            label="الموسيقى"
-            hint="موسيقى خلفية هادئة أثناء اللعب."
+            label={tr("settings.musicLabel")}
+            hint={tr("settings.musicHint")}
             checked={prefs.musicOn}
             onChange={(v) => setPrefs({ musicOn: v })}
           />
@@ -105,10 +97,10 @@ export default function SettingsScreen({
       </div>
 
       <div className="flex flex-col gap-2.5">
-        <SectionTitle>اللعبة</SectionTitle>
+        <SectionTitle>{tr("settings.gameTitle")}</SectionTitle>
         <div className="flex flex-col gap-2">
           <div className="rounded-xl border border-white/10 bg-card/70 px-4 py-3">
-            <p className="text-sm font-bold">مدة النقاش الافتراضية</p>
+            <p className="text-sm font-bold">{tr("settings.defaultDiscussion")}</p>
             <div className="mt-2 flex gap-2">
               {DURATIONS.map((m) => (
                 <button
@@ -122,15 +114,15 @@ export default function SettingsScreen({
                       : "border-white/10 text-muted-foreground hover:border-accent/50",
                   )}
                 >
-                  {m} د
+                  {tr("setup.minShort", { n: m })}
                 </button>
               ))}
             </div>
           </div>
           <Toggle
             emoji="📖"
-            label="إظهار التعليمات"
-            hint="عرض شرح مراحل اللعبة عند البدء."
+            label={tr("settings.showInstructionsLabel")}
+            hint={tr("settings.showInstructionsHint")}
             checked={prefs.showInstructions}
             onChange={(v) => setPrefs({ showInstructions: v })}
           />
@@ -138,47 +130,47 @@ export default function SettingsScreen({
       </div>
 
       <div className="flex flex-col gap-2.5">
-        <SectionTitle>قواعد اللعبة (للألعاب الجديدة)</SectionTitle>
+        <SectionTitle>{tr("settings.rulesTitle")}</SectionTitle>
         <div className="flex flex-col gap-2">
           <Toggle
             emoji="👀"
-            label="كشف دور اللاعب بعد خروجه"
-            hint="يُعرض دور اللاعب الخارج من اللعبة."
+            label={tr("setup.revealRoleLabel")}
+            hint={tr("setup.revealRoleHint")}
             checked={rules.revealRoleOnElimination}
             onChange={(v) => setRules({ revealRoleOnElimination: v })}
           />
           <Toggle
             emoji="❤️"
-            label="الطبيب يحمي نفسه"
-            hint="يمكن للطبيب اختيار نفسه للحماية."
+            label={tr("setup.doctorSelfLabel")}
+            hint={tr("setup.doctorSelfHint")}
             checked={rules.doctorCanHealSelf}
             onChange={(v) => setRules({ doctorCanHealSelf: v })}
           />
           <Toggle
             emoji="🤷"
-            label="التصويت على عدم إخراج أحد"
-            hint="خيار الامتناع أثناء التصويت."
+            label={tr("setup.abstainLabel")}
+            hint={tr("setup.abstainHint")}
             checked={rules.allowAbstain}
             onChange={(v) => setRules({ allowAbstain: v })}
           />
           <Toggle
             emoji="⚖️"
-            label="إعادة التصويت عند التعادل"
-            hint="التصويت مجددًا بين المتعادلين."
+            label={tr("setup.tieRevoteLabel")}
+            hint={tr("setup.tieRevoteHint")}
             checked={rules.tieRevote}
             onChange={(v) => setRules({ tieRevote: v })}
           />
           <Toggle
             emoji="🕵️"
-            label="دور المحقق"
-            hint="إدراج المحقق في توزيع الأدوار."
+            label={tr("settings.detectiveRole")}
+            hint={tr("settings.detectiveRoleHint")}
             checked={rules.detectiveEnabled}
             onChange={(v) => setRules({ detectiveEnabled: v })}
           />
           <Toggle
             emoji="💊"
-            label="دور الطبيب"
-            hint="إدراج الطبيب في توزيع الأدوار."
+            label={tr("settings.doctorRole")}
+            hint={tr("settings.doctorRoleHint")}
             checked={rules.doctorEnabled}
             onChange={(v) => setRules({ doctorEnabled: v })}
           />
@@ -186,14 +178,24 @@ export default function SettingsScreen({
       </div>
 
       <div className="flex flex-col gap-2.5">
-        <SectionTitle>الواجهة</SectionTitle>
+        <SectionTitle>{tr("settings.interfaceTitle")}</SectionTitle>
         <div className="flex flex-col gap-2">
-          <StaticRow emoji="🌍" label="اللغة" value="العربية (الافتراضية)" />
-          <StaticRow emoji="🌙" label="الوضع الداكن" value="مفعّل دائمًا" />
+          <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-card/70 px-4 py-3">
+            <span className="text-xl">🌍</span>
+            <p className="flex-1 text-sm font-bold">{tr("settings.language")}</p>
+            <LanguagePicker />
+          </div>
+          <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-card/70 px-4 py-3">
+            <span className="text-xl">🌙</span>
+            <p className="flex-1 text-sm font-bold">{tr("settings.darkMode")}</p>
+            <span className="text-xs font-bold text-muted-foreground">
+              {tr("settings.darkValue")}
+            </span>
+          </div>
         </div>
       </div>
 
-      <GhostButton onClick={onBack}>رجوع إلى القائمة</GhostButton>
+      <GhostButton onClick={onBack}>{tr("common.toMenu")}</GhostButton>
     </ScreenShell>
   );
 }
