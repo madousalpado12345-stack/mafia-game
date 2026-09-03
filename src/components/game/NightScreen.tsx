@@ -46,9 +46,9 @@ function NightIntro({
       <div className="flex-1" />
       <div className="text-center">
         <div className="animate-float text-8xl">🌙</div>
-        <h1 className="mt-4 text-4xl font-black text-glow">الليل بدأ...</h1>
+        <h1 className="mt-4 text-4xl font-black text-glow">أغمضوا أعينكم</h1>
         <p className="mx-auto mt-3 max-w-[290px] text-sm leading-7 text-muted-foreground">
-          أغمضوا أعينكم بهدوء. سيستيقظ أصحاب الأدوار الخاصة واحدًا تلو الآخر لتنفيذ
+          حلّ الليل بهدوء. سيستيقظ أصحاب الأدوار الخاصة واحدًا تلو الآخر لتنفيذ
           قدراتهم — مرّروا الهاتف بينهم سرًا ولا تتجسسوا.
         </p>
       </div>
@@ -60,17 +60,14 @@ function NightIntro({
         <div className="mt-3 flex justify-center gap-4">
           {steps.map((s) => {
             const r = ROLES[s];
-            const actor = alivePlayers(game.players).find((p) => p.role === s);
             return (
               <div key={s} className="text-center">
                 <div className="text-3xl">{r.emoji}</div>
                 <p className="mt-1 text-xs font-bold" style={{ color: r.color }}>
                   {r.name}
                 </p>
-                {/* In AI mode the role holders stay secret — never show names. */}
-                <p className="text-[10px] text-muted-foreground">
-                  {aiMode ? "؟" : (actor?.name ?? "—")}
-                </p>
+                {/* صاحب الدور يبقى سرًا — لا تظهر أسماء اللاعبين أبدًا. */}
+                <p className="text-[10px] text-muted-foreground">؟</p>
               </div>
             );
           })}
@@ -130,7 +127,7 @@ function NightAction({
     handoffNote =
       "مرّر الهاتف بين أعضاء المافيا واتفقوا معًا على هدف واحد. لا تختاروا لاعبًا من المافيا.";
     ctaLabel = "اختيار الهدف 🔪";
-    heading = "المافيا تختار هدفها";
+    heading = "افتحوا أعينكم يا مافيا";
     help = "اتفقوا على لاعب واحد لإخراجه من اللعبة هذه الليلة.";
   } else if (step === "doctor") {
     // All faces look the same — the doctor must not learn who the mafia are.
@@ -140,10 +137,10 @@ function NightAction({
         id: p.id,
         label: p.name,
       }));
-    handoffName = actor?.name ?? "الطبيب";
+    handoffName = "الطبيب";
     handoffNote = "اختر اللاعب الذي تريد حمايته من استهداف المافيا.";
     ctaLabel = "حماية هذا اللاعب ❤️";
-    heading = "الطبيب يحمي لاعبًا";
+    heading = "افتحوا أعينكم يا طبيب";
     help = game.settings.doctorCanHealSelf
       ? "يمكنك حماية نفسك أيضًا إذا أردت."
       : "لا يمكنك حماية نفسك في هذه الجولة.";
@@ -154,10 +151,10 @@ function NightAction({
         id: p.id,
         label: p.name,
       }));
-    handoffName = actor?.name ?? "المحقق";
+    handoffName = "المحقق";
     handoffNote = "اختر لاعبًا لفحصه — ستعرف النتيجة وحدك ولن تظهر للآخرين.";
     ctaLabel = "التحقيق مع هذا اللاعب 🕵️";
-    heading = "المحقق يفحص لاعبًا";
+    heading = "افتحوا أعينكم يا محقق";
     help = "ستعرف هل هو من المافيا أم لا، ثم أخفِ النتيجة فورًا.";
   }
 
