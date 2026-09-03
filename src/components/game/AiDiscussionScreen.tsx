@@ -40,7 +40,13 @@ export default function AiDiscussionScreen({
   // Single countdown interval — cleaned up on pause, unmount and transitions.
   useEffect(() => {
     if (secondsLeft <= 0) return;
-    const iv = setInterval(() => onTickRef.current(), 1000);
+    const iv = setInterval(() => {
+      try {
+        onTickRef.current();
+      } catch (err) {
+        console.error("[ai discussion tick]", err);
+      }
+    }, 1000);
     return () => clearInterval(iv);
   }, [secondsLeft]);
 
@@ -48,8 +54,12 @@ export default function AiDiscussionScreen({
   useEffect(() => {
     if (secondsLeft > 0 || timerFiredRef.current) return;
     timerFiredRef.current = true;
-    playSound("timerEnd");
-    onDoneRef.current();
+    try {
+      playSound("timerEnd");
+      onDoneRef.current();
+    } catch (err) {
+      console.error("[ai discussion end]", err);
+    }
   }, [secondsLeft]);
 
   const current = shown < script.length ? script[shown] : null;

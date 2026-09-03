@@ -286,7 +286,14 @@ export function useAutoAdvance(active: boolean | undefined, cb: () => void, dela
   useEffect(() => {
     if (!active || firedRef.current) return;
     firedRef.current = true;
-    const t = setTimeout(() => cbRef.current(), delay);
+    const t = setTimeout(() => {
+      try {
+        cbRef.current();
+      } catch (err) {
+        // A spectator auto-advance must never take the whole app down.
+        console.error("[autoAdvance]", err);
+      }
+    }, delay);
     return () => clearTimeout(t);
   }, [active, delay]);
 }

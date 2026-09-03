@@ -1,7 +1,13 @@
 import { SCREEN_NAMES } from "./types";
 import type { AppState, Settings } from "./types";
 
-const SAVE_KEY = "mafia-app-state-v1";
+/**
+ * Storage versioning: bumping the key orphans any state written by older
+ * (possibly buggy / mid-transition) builds so a stale save can never crash
+ * the app on load. Old keys are cleaned up on first load.
+ */
+const SAVE_KEY = "mafia-app-state-v2";
+const LEGACY_KEYS = ["mafia-app-state-v1"];
 
 export const DEFAULT_SETTINGS: Settings = {
   prefs: {
@@ -56,6 +62,33 @@ export function clearAppState() {
   }
 }
 
+function dropLegacyKeys() {
+  try {
+    for (const key of LEGACY_KEYS) localStorage.removeItem(key);
+  } catch {
+    // ignore
+  }
+}
+
+/** Every screen may restore an in-progress game. If the stored game does not
+ *  match the current game schema it is dropped (back to the menu) instead of
+ *  letting a half-shaped object crash a screen at load. */
+function isUsableGame(g: unknown): g is NonNullable<AppState["game"]> {
+  if (!g || typeof g !== "object") return false;
+  const game = g as Partial<NonNullable<AppState["game"]>>;
+  if (!Array.isArray(game.players) || game.players.length < 2) return false;
+  if (typeof game.night !== "number" || game.night < 1) return false;
+  if (!game.settings || typeof game.settings !== "object") return false;
+  if (typeof game.settings.discussionMinutes !== "number") return false;
+  // A saved phase always has the fields the screens read. Missing/corrupt
+  // optional ones are tolerated (screens already fall back), but the core
+  // round data must exist in a sane shape.
+  if (!game.players.every((p) => p && typeof p.id === "string" && typeof p.name === "string")) {
+    return false;
+  }
+  return true;
+}
+
 function isValidAppState(data: unknown): data is AppState {
   if (!data || typeof data !== "object") return false;
   const d = data as Partial<AppState>;
@@ -66,16 +99,13 @@ function isValidAppState(data: unknown): data is AppState {
   if (!d.settings || typeof d.settings !== "object") return false;
   if (!d.settings.rules || typeof d.settings.rules !== "object") return false;
   if (!d.settings.prefs || typeof d.settings.prefs !== "object") return false;
-  if (d.game !== null && d.game !== undefined) {
-    const g = d.game as Partial<AppState["game"]>;
-    if (!g || !Array.isArray(g.players) || g.players.length === 0) return false;
-    if (typeof g.night !== "number") return false;
-  }
+  if (d.game !== null && d.game !== undefined && !isUsableGame(d.game)) return false;
   return true;
 }
 
 export function loadAppState(): AppState | null {
   try {
+    dropLegacyKeys();
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     const data: unknown = JSON.parse(raw);

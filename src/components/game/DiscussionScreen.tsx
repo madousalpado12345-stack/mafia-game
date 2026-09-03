@@ -43,7 +43,13 @@ export default function DiscussionScreen({
   // Single interval — cleaned up on pause, unmount and every transition.
   useEffect(() => {
     if (!running || secondsLeft <= 0) return;
-    const iv = setInterval(() => onTickRef.current(), 1000);
+    const iv = setInterval(() => {
+      try {
+        onTickRef.current();
+      } catch (err) {
+        console.error("[discussion tick]", err);
+      }
+    }, 1000);
     return () => clearInterval(iv);
   }, [running, secondsLeft]);
 
@@ -59,8 +65,12 @@ export default function DiscussionScreen({
   useEffect(() => {
     if (!ended) return;
     const t = setTimeout(() => {
-      playSound("click");
-      onDoneRef.current();
+      try {
+        playSound("click");
+        onDoneRef.current();
+      } catch (err) {
+        console.error("[discussion end]", err);
+      }
     }, 900);
     return () => clearTimeout(t);
   }, [ended]);
