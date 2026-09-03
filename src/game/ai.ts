@@ -118,17 +118,18 @@ export function applyAiNightActions(game: GameState): void {
             if (!st) continue;
             const persona = personaById(st.personalityId);
             score += sc(st, st.suspectScores, c.id, 28) * (0.5 + persona.boldness * 0.7);
-            // players who accused mafia members are dangerous
+            // players who accused mafia members are dangerous. The mafia only
+            // ever consults its own teammate list — never the global role table
+            // — so it can never learn a non-mafia player's role this way.
             for (const a of st.accusations) {
-              if (a.accusedId === c.id && isMafiaRole(game.players.find((x) => x.id === a.accuserId)!)) {
+              if (a.accusedId === c.id && st.mafiaTeammateIds.includes(a.accuserId)) {
                 score += 18 * factor;
               }
             }
             // players who voted against mafia members are dangerous
             for (const v of st.voteHistory) {
-              if (v.targetId === c.id && v.voterId !== c.id) {
-                const voter = game.players.find((x) => x.id === v.voterId);
-                if (voter && isMafiaRole(voter)) score += 14 * factor;
+              if (v.targetId === c.id && v.voterId !== c.id && st.mafiaTeammateIds.includes(v.voterId)) {
+                score += 14 * factor;
               }
             }
           }

@@ -208,6 +208,12 @@ function NightAction({
       <GameTopBar title={`الليلة ${game.night} — ${r.name}`} onExit={onExit} onSave={onSave} />
       <StepDots current={stepIndex} total={totalSteps} />
 
+      {/* الجملة الخاصة بالدور أولًا، ثم قائمة اللاعبين للاختيار. */}
+      <div className="text-center">
+        <h2 className="text-xl font-black">{heading}</h2>
+        <p className="mt-1 text-sm text-muted-foreground">{help}</p>
+      </div>
+
       {step === "mafia" && mafiaTeammates(game, actor?.id ?? "").length > 0 && (
         <p className="text-center text-xs font-bold text-red-400">
           أنتم المافيا: {[actor?.name, ...mafiaTeammates(game, actor?.id ?? "").map((m) => m.name)].join("، ")}
@@ -222,11 +228,6 @@ function NightAction({
       ) : (
         <PassPhone name={handoffName} note={handoffNote} />
       )}
-
-      <div className="text-center">
-        <h2 className="text-xl font-black">{heading}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{help}</p>
-      </div>
 
       <SelectableList
         items={candidates}
