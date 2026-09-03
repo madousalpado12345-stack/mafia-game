@@ -125,7 +125,6 @@ function NightAction({
       .map((p) => ({
         id: p.id,
         label: p.name,
-        emoji: "👤",
       }));
     handoffName = "المافيا";
     handoffNote =
@@ -140,7 +139,6 @@ function NightAction({
       .map((p) => ({
         id: p.id,
         label: p.name,
-        emoji: "👤",
       }));
     handoffName = actor?.name ?? "الطبيب";
     handoffNote = "اختر اللاعب الذي تريد حمايته من استهداف المافيا.";
@@ -155,7 +153,6 @@ function NightAction({
       .map((p) => ({
         id: p.id,
         label: p.name,
-        emoji: "🕵️",
       }));
     handoffName = actor?.name ?? "المحقق";
     handoffNote = "اختر لاعبًا لفحصه — ستعرف النتيجة وحدك ولن تظهر للآخرين.";

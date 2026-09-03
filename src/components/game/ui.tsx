@@ -207,7 +207,6 @@ export function SelectableList({
               it.disabled && "pointer-events-none opacity-40",
             )}
           >
-            {it.emoji && <span className="text-xl">{it.emoji}</span>}
             <span className="flex-1">
               <span className="block text-sm font-bold">{it.label}</span>
               {it.hint && (
@@ -243,9 +242,6 @@ export function PlayerStatusRow({
         dead && "opacity-55",
       )}
     >
-      <span className={cn("text-lg", dead ? "grayscale" : "")}>
-        {dead ? "👻" : r.emoji}
-      </span>
       <span className={cn("flex-1 text-sm font-bold", dead && "line-through")}>
         {player.name}
       </span>

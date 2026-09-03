@@ -1,5 +1,4 @@
 import { humanPlayer } from "@/game/ai";
-import { personaById } from "@/game/personas";
 import { playSound } from "@/game/sound";
 import type { GameState } from "@/game/types";
 import { cn } from "@/lib/utils";
@@ -121,14 +120,10 @@ export default function AiDiscussionScreen({
       <div className="game-scroll flex max-h-[48dvh] flex-1 flex-col gap-3 overflow-y-auto pr-1">
         {script.slice(0, shown).map((u, i) => {
           const speaker = game.players.find((p) => p.id === u.playerId);
-          const persona = speaker?.isAi
-            ? personaById(game.aiStates?.[speaker.id]?.personalityId ?? "smart")
-            : null;
           return (
             <ChatBubble
               key={i}
               name={speaker?.name ?? "؟"}
-              emoji={persona?.emoji ?? "👤"}
               text={u.text}
               complete
             />
@@ -139,9 +134,6 @@ export default function AiDiscussionScreen({
           <ChatBubble
             key={`typing-${shown}`}
             name={game.players.find((p) => p.id === current.playerId)?.name ?? "؟"}
-            emoji={
-              personaById(game.aiStates?.[current.playerId]?.personalityId ?? "smart").emoji
-            }
             text={current.text.slice(0, typed)}
             active={!paused}
           />
@@ -191,13 +183,11 @@ export default function AiDiscussionScreen({
 
 function ChatBubble({
   name,
-  emoji,
   text,
   complete,
   active,
 }: {
   name: string;
-  emoji: string;
   text: string;
   complete?: boolean;
   active?: boolean;
@@ -209,16 +199,16 @@ function ChatBubble({
         !complete && !active && "opacity-70",
       )}
     >
-      <span
-        className={cn(
-          "mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full border border-accent/30 bg-accent/10 text-lg",
-          active && "animate-glow",
-        )}
-      >
-        {emoji}
-      </span>
       <div className="min-w-0 flex-1">
-        <p className="text-xs font-extrabold text-accent">{name}</p>
+        <p
+          className={cn(
+            "flex items-center gap-2 text-xs font-extrabold text-accent",
+            active && "animate-glow",
+          )}
+        >
+          {name}
+          {active && !complete && <span className="text-[9px] font-bold text-accent/70">يتحدث...</span>}
+        </p>
         <p className="mt-0.5 text-sm leading-6 text-foreground/90">
           {text}
           {!complete && <span className="animate-pulse text-accent">▌</span>}

@@ -38,7 +38,6 @@ export default function VoteScreen({
     .map((p) => ({
       id: p.id,
       label: p.name,
-      emoji: "👤",
     }));
 
   const canAbstain = game.settings.allowAbstain && !revote;

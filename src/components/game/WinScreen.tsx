@@ -85,7 +85,6 @@ export default function WinScreen({
                 )}
               >
                 <span className="flex items-center gap-2 overflow-hidden">
-                  <span className={dead ? "grayscale" : ""}>{dead ? "👻" : r.emoji}</span>
                   <span className={`truncate text-sm font-bold ${dead ? "line-through" : ""}`}>
                     {p.name}
                   </span>
@@ -93,11 +92,25 @@ export default function WinScreen({
                 <span className="flex items-center gap-2">
                   {p.isAi ? (
                     <span className="rounded-md bg-white/5 px-2 py-0.5 text-[11px] font-bold text-muted-foreground">
-                      {persona?.emoji} {persona?.name}
+                      {persona?.id === "smart"
+                        ? "ذكي"
+                        : persona?.id === "confident"
+                          ? "واثق"
+                          : persona?.id === "skeptic"
+                            ? "شكاك"
+                            : persona?.id === "quiet"
+                              ? "هادئ"
+                              : persona?.id === "funny"
+                                ? "مرح"
+                                : persona?.id === "deceiver"
+                                  ? "مخادع"
+                                  : persona?.id === "aggressive"
+                                    ? "عدواني"
+                                    : "محلل"}
                     </span>
                   ) : (
                     <span className="rounded-md bg-white/5 px-2 py-0.5 text-[11px] font-bold text-accent">
-                      👤 أنت
+                      أنت
                     </span>
                   )}
                   <span

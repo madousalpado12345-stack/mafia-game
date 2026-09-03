@@ -97,24 +97,23 @@ export default function NamesScreen({
                 key={i}
                 className="flex items-center gap-3 rounded-xl border border-white/10 bg-card/70 px-4 py-2.5"
               >
-                <span className="text-xl">{persona.emoji}</span>
                 <span className="flex-1 text-sm font-bold">{n}</span>
                 <span className="text-xs text-muted-foreground">
                   {persona.id === "smart"
-                    ? "🧠 ذكي"
+                    ? "ذكي"
                     : persona.id === "confident"
-                      ? "😎 واثق"
+                      ? "واثق"
                       : persona.id === "skeptic"
-                        ? "🤔 شكاك"
+                        ? "شكاك"
                         : persona.id === "quiet"
-                          ? "🤫 هادئ"
+                          ? "هادئ"
                           : persona.id === "funny"
-                            ? "😂 مرح"
+                            ? "مرح"
                             : persona.id === "deceiver"
-                              ? "🎭 مخادع"
+                              ? "مخادع"
                               : persona.id === "aggressive"
-                                ? "🔥 عدواني"
-                                : "🕵️ محلل"}
+                                ? "عدواني"
+                                : "محلل"}
                 </span>
               </div>
             );
