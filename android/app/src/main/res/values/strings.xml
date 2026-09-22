@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Mafia 2026</string>
+    <string name="title_activity_main">Mafia 2026</string>
+    <string name="package_name">com.kochbati.mafia.game2026</string>
+    <string name="custom_url_scheme">com.kochbati.mafia.game2026</string>
+</resources>
