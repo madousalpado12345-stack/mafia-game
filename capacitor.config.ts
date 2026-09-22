@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
-  appId: "com.mafia.game",
+  appId: "com.kochbati.mafia.game2026",
   appName: "Mafia",
   webDir: "dist",
 };
