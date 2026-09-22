@@ -26,7 +26,7 @@ export default function MenuScreen({
       </div>
       <div className="mb-4 text-center">
         <div className="animate-flicker text-7xl">🕵️</div>
-        <h1 dir="ltr" className="mt-4 text-5xl font-black leading-tight text-glow">mafia</h1>
+        <h1 dir="ltr" className="mt-4 text-5xl font-black leading-tight text-glow">Mafia 2026</h1>
         <p className="mt-2 text-lg font-bold text-accent text-glow-gold">
           {tr("app.tagline")}
         </p>
